@@ -1,5 +1,9 @@
 # Lumen
 
+![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet&logoColor=white)
+![Platform](https://img.shields.io/badge/platform-Windows-0078D4?logo=windows&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-green)
+
 **Lumen** 是一个 Windows 桌面覆盖层（Desktop Overlay）：它铺满整个工作区、盖在桌面图标与壁纸之上，却位于普通窗口之下。你可以在上面摆放轻量小组件（时钟、电量、网速、媒体控制等），用类似 PPT 的多页方式组织信息，并通过公式实时绑定系统数据。
 
 > 它不是传统意义的 HUD 置顶窗口，而是一层「安静地躺在桌面与窗口之间」的可编辑画布。
