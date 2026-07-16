@@ -54,6 +54,11 @@ src/lumen/
 └── Icons/                   程序图标
 ```
 
+## 作者
+
+- GitHub：[@pingju555](https://github.com/pingju555)
+- 邮箱：2336317586@qq.com
+
 ## 许可
 
-暂未选定开源协议。如需使用或二次开发，请先联系作者。
+本项目采用 **MIT 许可证**，详见 [LICENSE](LICENSE)。
