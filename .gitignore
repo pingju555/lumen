@@ -1,0 +1,18 @@
+# .NET / WPF build artifacts
+bin/
+obj/
+
+# Visual Studio / Rider user settings
+*.user
+*.suo
+*.userprefs
+.vs/
+
+# OS junk
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local runtime data (config, logs, profiles)
+AppData/
+*.log

@@ -1,0 +1,53 @@
+<Window x:Class="Lumen.Ui.PropWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="属性编辑" Height="560" Width="460"
+        Background="#1E1E1E" Foreground="#E6E6E6"
+        WindowStyle="None" AllowsTransparency="True" Topmost="True"
+        ShowInTaskbar="False"
+        ResizeMode="CanResize" WindowStartupLocation="Manual">
+    <Window.Resources>
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#3A3D41"/>
+            <Setter Property="Foreground" Value="#F0F0F0"/>
+            <Setter Property="BorderBrush" Value="#3F3F46"/>
+            <Setter Property="Padding" Value="12,5"/>
+        </Style>
+    </Window.Resources>
+    <Border BorderBrush="#3F3F46" BorderThickness="1" CornerRadius="6">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <!-- 标题栏（可拖拽） -->
+            <Border Grid.Row="0" Background="#2D2D30" CornerRadius="6,6,0,0"
+                    Padding="10,6" MouseLeftButtonDown="Header_MouseDown">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="TitleTb" Text="属性编辑" FontSize="13" FontWeight="Bold"
+                               Foreground="#FFFFFF"/>
+                    <Button x:Name="ClearBtn" Grid.Column="1" Content="取消选定" Width="80"
+                            FontSize="11" Padding="6,2" Click="Clear_Click"/>
+                </Grid>
+            </Border>
+            <!-- 无选定时的占位 -->
+            <TextBlock x:Name="Placeholder" Grid.Row="1"
+                       Text="选定部件以编辑对应属性" FontSize="14"
+                       Foreground="#8A8A8A" HorizontalAlignment="Center"
+                       VerticalAlignment="Center" Visibility="Visible"/>
+            <!-- 属性面板（嵌入 PropertyEditorPanel） -->
+            <ContentControl x:Name="PanelHost" Grid.Row="1" Visibility="Collapsed"/>
+            <!-- 底部应用按钮 -->
+            <Border Grid.Row="2" Background="#252526" CornerRadius="0,0,6,6" Padding="8,6">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button x:Name="ApplyBtn" Content="应用" Width="80" Click="Apply_Click"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

@@ -1,0 +1,196 @@
+<Window x:Class="Lumen.Ui.PageGridBgWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="页面设置" Height="400" Width="420"
+        Background="#1E1E1E" Foreground="#E6E6E6"
+        WindowStyle="None" AllowsTransparency="True" Topmost="True"
+        ShowInTaskbar="False" ResizeMode="NoResize" WindowStartupLocation="Manual">
+    <Window.Resources>
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#3A3D41"/>
+            <Setter Property="Foreground" Value="#F0F0F0"/>
+            <Setter Property="BorderBrush" Value="#3F3F46"/>
+            <Setter Property="Padding" Value="10,4"/>
+        </Style>
+        <Style TargetType="TabControl">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="#3F3F46"/>
+            <Setter Property="Foreground" Value="#F0F0F0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <TabPanel x:Name="HeaderPanel" Grid.Row="0" Panel.ZIndex="1"
+                                      Margin="2,0,2,-1" IsItemsHost="True" Background="Transparent"/>
+                            <Border Grid.Row="1" Background="#1E1E1E"
+                                    BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+                                    CornerRadius="0,0,4,4">
+                                <ContentPresenter x:Name="PART_SelectedContentHost"
+                                                 ContentSource="SelectedContent" Margin="10"/>
+                            </Border>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="TabItem">
+            <Setter Property="Foreground" Value="#C8C8C8"/>
+            <Setter Property="Background" Value="#2D2D30"/>
+            <Setter Property="BorderBrush" Value="#3F3F46"/>
+            <Setter Property="Padding" Value="14,6"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="Border" Background="#2D2D30" BorderBrush="#3F3F46"
+                                BorderThickness="1,1,1,0" CornerRadius="4,4,0,0"
+                                Margin="2,0,2,0" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter x:Name="ContentSite" VerticalAlignment="Center"
+                                             HorizontalAlignment="Center" ContentSource="Header"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#007ACC"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#3A3D41"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+    <Border BorderBrush="#3F3F46" BorderThickness="1" CornerRadius="6">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- 标题栏（X 关闭） -->
+            <Border Grid.Row="0" Background="#2D2D30" CornerRadius="6,6,0,0"
+                    Padding="10,6" MouseLeftButtonDown="Header_MouseDown">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="页面设置" FontSize="13" FontWeight="Bold" Foreground="#FFFFFF"/>
+                    <Button Grid.Column="1" Content="✕" Width="24" Height="22" FontSize="12"
+                            Padding="0" Click="CloseBtn_Click" ToolTip="关闭"/>
+                </Grid>
+            </Border>
+
+            <!-- TabControl -->
+            <TabControl Grid.Row="1" Margin="4,4,4,4">
+                <!-- 页面 Tab -->
+                <TabItem Header="页面">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <ListBox x:Name="PageList" Grid.Row="0"
+                                 Background="#252526" Foreground="#F0F0F0"
+                                 BorderBrush="#3F3F46" SelectionChanged="PageList_SelectionChanged"/>
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,6,0,0">
+                            <Button x:Name="UpBtn" Content="↑ 上移" Margin="0,0,6,0" Click="Up_Click"/>
+                            <Button x:Name="DownBtn" Content="↓ 下移" Margin="0,0,6,0" Click="Down_Click"/>
+                            <Button x:Name="RenamePageBtn" Content="改名" Margin="0,0,6,0" Click="RenamePage_Click"/>
+                            <Button x:Name="NewPageBtn" Content="＋ 新页面" Margin="0,0,6,0" Click="NewPage_Click"/>
+                            <Button x:Name="DelPageBtn" Content="✕ 删除" Click="DeletePage_Click"/>
+                        </StackPanel>
+                    </Grid>
+                </TabItem>
+                <!-- 网格 Tab -->
+                <TabItem Header="网格">
+                    <StackPanel>
+                        <CheckBox x:Name="ShowGridCb" Content="显示网格" Margin="0,0,0,12"
+                                  Foreground="#F0F0F0" Checked="GridShow_Changed" Unchecked="GridShow_Changed"/>
+                        <TextBlock Text="网格间距" Margin="0,0,0,4" Foreground="#9A9A9A"/>
+                        <ComboBox x:Name="GridSizeCb" Width="160" HorizontalAlignment="Left"
+                                  SelectionChanged="GridSize_Changed"/>
+                    </StackPanel>
+                </TabItem>
+                <!-- 背景 Tab -->
+                <TabItem Header="背景">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <RadioButton x:Name="RbSolid" Content="纯色" GroupName="Bg" IsChecked="True"
+                                         Margin="0,0,16,0" Foreground="#F0F0F0" Checked="BgMode_Changed"/>
+                            <RadioButton x:Name="RbImage" Content="图片" GroupName="Bg"
+                                         Foreground="#F0F0F0" Checked="BgMode_Changed"/>
+                        </StackPanel>
+                        <StackPanel x:Name="SolidRow" Orientation="Vertical" Margin="0,0,0,8">
+                            <!-- 模式切换：值 / 公式 / 变量 -->
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                <Button x:Name="BgModeVal" Content="值" Width="46" FontSize="11" Margin="0,0,4,0"
+                                        Padding="0,2,0,2" Tag="Static" Click="BgModeToggle_Click"/>
+                                <Button x:Name="BgModeFormula" Content="公式" Width="46" FontSize="11" Margin="0,0,4,0"
+                                        Padding="0,2,0,2" Tag="Formula" Click="BgModeToggle_Click"/>
+                                <Button x:Name="BgModeGv" Content="变量" Width="46" FontSize="11"
+                                        Padding="0,2,0,2" Tag="Global" Click="BgModeToggle_Click"/>
+                            </StackPanel>
+                            <!-- 值 模式 -->
+                            <StackPanel x:Name="BgValueHost" Orientation="Horizontal">
+                                <TextBox x:Name="ColorTb" Width="160" Text="#FF4488FF"
+                                         Background="#2D2D30" Foreground="#F0F0F0" BorderBrush="#3F3F46"/>
+                                <Border x:Name="Swatch" Width="28" Height="24" Margin="8,0,0,0"
+                                        BorderBrush="#555" BorderThickness="1"/>
+                                <Button x:Name="PickColorBtn" Content="调色板…" Margin="8,0,0,0" Click="PickColor_Click"/>
+                            </StackPanel>
+                            <!-- 公式 模式 -->
+                            <StackPanel x:Name="BgFormulaHost" Orientation="Vertical" Visibility="Collapsed">
+                                <TextBox x:Name="FormulaTb" Width="320" Text=""
+                                         Background="#2D2D30" Foreground="#F0F0F0" BorderBrush="#3F3F46"
+                                         TextChanged="FormulaTb_TextChanged"/>
+                                <TextBlock x:Name="FormulaHint" Margin="0,4,0,0" Foreground="#9A9A9A" FontSize="11" TextWrapping="Wrap"
+                                           Text="输入公式（无需外层 $），结果需为颜色。例如：si(cpu)>80 ? &quot;#FFFF3228&quot; : &quot;#FF1E1E1E&quot;"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                    <Border x:Name="FormulaPreviewSwatch" Width="28" Height="22"
+                                            BorderBrush="#555" BorderThickness="1" Visibility="Collapsed"/>
+                                    <TextBlock x:Name="FormulaPreviewText" Margin="6,0,0,0" Foreground="#9A9A9A" FontSize="11" Visibility="Collapsed"/>
+                                </StackPanel>
+                            </StackPanel>
+                            <!-- 变量 模式 -->
+                            <StackPanel x:Name="BgGvHost" Orientation="Horizontal" Visibility="Collapsed">
+                                <ComboBox x:Name="BgGvCb" Width="200" Background="#2D2D30" Foreground="#F0F0F0" BorderBrush="#3F3F46"/>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel x:Name="ImageRow" Orientation="Horizontal" Visibility="Collapsed" Margin="0,0,0,8">
+                            <TextBox x:Name="ImageTb" Width="240"
+                                     Background="#2D2D30" Foreground="#F0F0F0" BorderBrush="#3F3F46"/>
+                            <Button x:Name="BrowseBtn" Content="浏览…" Margin="8,0,0,0" Click="Browse_Click"/>
+                        </StackPanel>
+                        <Button x:Name="ApplyBgBtn" Content="应用背景" Width="100" HorizontalAlignment="Left"
+                                Click="ApplyBg_Click"/>
+                    </StackPanel>
+                </TabItem>
+                <!-- 场景预设 Tab -->
+                <TabItem Header="场景预设">
+                    <StackPanel>
+                        <TextBlock Text="把当前页面（原子 + 网格 + 背景）存为可复用场景预设；套用即整页替换。" 
+                                   Foreground="#9A9A9A" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBox x:Name="SceneNameTb" Width="160" Text="我的场景"
+                                     Background="#2D2D30" Foreground="#F0F0F0" BorderBrush="#3F3F46"/>
+                            <Button x:Name="SaveSceneBtn" Content="另存为场景预设" Margin="8,0,0,0" Click="SaveScene_Click"/>
+                        </StackPanel>
+                        <ListBox x:Name="SceneList" Height="120" Background="#252526" Foreground="#F0F0F0"
+                                 BorderBrush="#3F3F46" SelectionChanged="SceneList_SelectionChanged"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <Button x:Name="ApplySceneBtn" Content="套用到本页" Margin="0,0,6,0"
+                                    Click="ApplyScene_Click" IsEnabled="False"/>
+                            <Button x:Name="DeleteSceneBtn" Content="删除" Click="DeleteScene_Click" IsEnabled="False"/>
+                        </StackPanel>
+                    </StackPanel>
+                </TabItem>
+            </TabControl>
+        </Grid>
+    </Border>
+</Window>
