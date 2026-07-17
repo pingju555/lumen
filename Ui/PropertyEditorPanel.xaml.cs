@@ -7,7 +7,6 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
-using Microsoft.Win32;
 using Lumen.Core;
 using Lumen.Actions;
 using Lumen.Atoms;
@@ -681,12 +680,8 @@ namespace Lumen.Ui
                         var btn = new Button { Content = Loc.T("prop.browse"), Margin = new Thickness(8, 0, 0, 0) };
                         btn.Click += (s, e) =>
                         {
-                            var dlg = new OpenFileDialog
-                            {
-                                Filter = Loc.T("dlg.bgImage.filter"),
-                                Title = Loc.T("prop.dlg.selectImage")
-                            };
-                            if (dlg.ShowDialog() == true) tb.Text = dlg.FileName;
+                            var picked = FilePickerWindow.PickFile(Window.GetWindow(this), Loc.T("dlg.bgImage.filter"), tb.Text);
+                            if (picked != null) tb.Text = picked;
                         };
                         tb.TextChanged += (s, e) => Preview(f);
                         sp.Children.Add(tb);

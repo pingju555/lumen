@@ -4,7 +4,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using Microsoft.Win32;
 using Lumen.Core;
 using Lumen.Pages;
 using Lumen.Atoms;
@@ -312,8 +311,8 @@ namespace Lumen.Ui
 
         private void Browse_Click(object sender, RoutedEventArgs e)
         {
-            var dlg = new OpenFileDialog { Filter = Loc.T("dlg.bgImage.filter"), Title = Loc.T("dlg.bgImage.title") };
-            if (dlg.ShowDialog() == true) ImageTb.Text = dlg.FileName;
+            var picked = FilePickerWindow.PickFile(this, Loc.T("dlg.bgImage.filter"), ImageTb.Text);
+            if (picked != null) ImageTb.Text = picked;
         }
 
         private void PickColor_Click(object sender, RoutedEventArgs e)

@@ -99,11 +99,11 @@ namespace Lumen.Ui
 
         private void BtnImport_Click(object sender, RoutedEventArgs e)
         {
-            var dlg = new OpenFileDialog { Filter = Loc.T("dlg.profileExport.filter"), Title = Loc.T("profile.importTitle") };
-            if (dlg.ShowDialog() != true) return;
+            var picked = FilePickerWindow.PickFile(this, Loc.T("dlg.profileExport.filter"), null);
+            if (picked == null) return;
             try
             {
-                var n = ConfigStore.ImportProfileFromFile(dlg.FileName, null);
+                var n = ConfigStore.ImportProfileFromFile(picked, null);
                 Reload();
                 MessageBox.Show(this, Loc.T("profile.importDone", n), Loc.T("profile.importDoneTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
             }
