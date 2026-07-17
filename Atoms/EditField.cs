@@ -21,8 +21,10 @@ namespace Lumen.Atoms
         public string Label;
         /// <summary>输入控件类型。</summary>
         public EditKind Kind;
-        /// <summary>Choice 下拉候选项。</summary>
+        /// <summary>Choice 下拉候选项（规范值，用于持久化/序列化，不翻译）。</summary>
         public string[] Choices;
+        /// <summary>Choice 下拉项的本地化键前缀：非空时，下拉显示 Loc.T(prefix + 值)，但存储仍用规范值。空则直接显示规范值。</summary>
+        public string ChoiceLocPrefix;
         /// <summary>Number 的数值范围（仅提示用，不强制）。</summary>
         public double Min, Max;
         /// <summary>帮助/占位文本（如公式语法提示）。</summary>

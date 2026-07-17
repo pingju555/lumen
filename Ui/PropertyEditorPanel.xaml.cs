@@ -659,15 +659,27 @@ namespace Lumen.Ui
             {
                 case EditKind.Choice:
                     {
-                        var cb = new ComboBox { ItemsSource = f.Choices, MinHeight = 24, IsEditable = false, Foreground = new SolidColorBrush(Color.FromRgb(0xF0, 0xF0, 0xF0)) };
-                        // 默认选中：raw 命中则用 raw，否则选首项（避免空选→下拉栏显扁）
+                        var cb = new ComboBox { MinHeight = 24, IsEditable = false, Foreground = new SolidColorBrush(Color.FromRgb(0xF0, 0xF0, 0xF0)) };
+                        // 每项：Tag=规范值（持久化用），Content=本地化名（无前缀则直接显示规范值）
+                        ComboBoxItem MatchRaw(string rawVal)
+                        {
+                            foreach (ComboBoxItem it in cb.Items)
+                                if ((it.Tag as string) == rawVal) return it;
+                            return null;
+                        }
                         if (f.Choices != null && f.Choices.Length > 0)
                         {
-                            bool hit = false;
-                            foreach (var c in f.Choices) if (c == raw) { hit = true; break; }
-                            cb.SelectedItem = hit ? raw : f.Choices[0];
+                            var prefix = f.ChoiceLocPrefix;
+                            foreach (var c in f.Choices)
+                            {
+                                var item = new ComboBoxItem { Tag = c };
+                                item.Content = string.IsNullOrEmpty(prefix) ? c : Loc.T(prefix + c);
+                                cb.Items.Add(item);
+                            }
+                            // 默认选中：raw 命中则用 raw，否则选首项（避免空选→下拉栏显扁）
+                            cb.SelectedItem = MatchRaw(raw) ?? cb.Items[0];
                         }
-                        st.ReadValue = () => cb.SelectedItem as string ?? "";
+                        st.ReadValue = () => (cb.SelectedItem as ComboBoxItem)?.Tag as string ?? "";
                         cb.SelectionChanged += (s, e) => Preview(f);
                         return cb;
                     }
