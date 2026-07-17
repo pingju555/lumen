@@ -10,7 +10,7 @@ using Lumen.I18n;
 
 namespace Lumen.Atoms
 {
-    public enum ShapeKind { Rect, Ellipse, Line, RoundRect }
+    public enum ShapeKind { Rect, Ellipse, Line }
 
     /// <summary>形状纹理效果（模拟质感，不依赖 DWM 全窗模糊，逐形状生效）。</summary>
     public enum ShapeTexture
@@ -19,7 +19,7 @@ namespace Lumen.Atoms
         Metal, Neon, Matte, Wood, Marble, Carbon, Holographic, Paper, Fabric, Liquid
     }
 
-    /// <summary>形状原子：矩形/椭圆/线/圆角矩形，填充支持纯色（渐变 v1.x 预留）。</summary>
+    /// <summary>形状原子：矩形/椭圆/线。圆角矩形 = 矩形 + 圆角半径(radius)；线 = 某维极小的矩形(细矩形)。</summary>
     public class ShapeAtom : Atom
     {
         public PropertyValue KindProp = new StaticValue("Rect");
@@ -345,7 +345,18 @@ namespace Lumen.Atoms
         }
         public override void SetProps(System.Collections.Generic.Dictionary<string, PropertyValue> props)
         {
-            if (props.TryGetValue("kind", out var k)) KindProp = k;
+            bool roundRect = false;
+            if (props.TryGetValue("kind", out var k))
+            {
+                var ks = k.Resolve(Ctx).AsStr().Trim();
+                // 归并：圆角矩形 = 矩形 + 圆角半径（不再作为独立类型）
+                if (ks.Equals("roundrect", StringComparison.OrdinalIgnoreCase))
+                {
+                    roundRect = true;
+                    KindProp = new StaticValue("Rect");
+                }
+                else KindProp = k;
+            }
             if (props.TryGetValue("fill", out var f)) FillProp = f;
             if (props.TryGetValue("stroke", out var s)) StrokeProp = s;
             if (props.TryGetValue("strokeW", out var w)) StrokeWProp = w;
@@ -353,13 +364,16 @@ namespace Lumen.Atoms
             if (props.TryGetValue("dash", out var d)) DashProp = d;
             if (props.TryGetValue("shadow", out var sh)) ShadowProp = sh;
             if (props.TryGetValue("texture", out var tx)) TextureProp = tx;
+            // 旧「圆角矩形」配置若未单独设 radius，则补默认圆角 14，避免归并后变直角
+            if (roundRect && (!props.ContainsKey("radius") || props["radius"].Resolve(Ctx).AsStr().Trim() is "" or "0"))
+                RadiusProp = new StaticValue("14");
             ReadCommonProps(props);
         }
 
         public override List<EditField> EditFields()
         {
             var l = base.EditFields();
-            l.Add(new EditField { Key = "kind",    Label = Loc.T("atom.label.shape"),     Kind = EditKind.Choice, Choices = new[] { "Rect", "RoundRect", "Ellipse", "Line" }, ChoiceLocPrefix = "atom.shapeKind." });
+            l.Add(new EditField { Key = "kind",    Label = Loc.T("atom.label.shape"),     Kind = EditKind.Choice, Choices = new[] { "Rect", "Ellipse", "Line" }, ChoiceLocPrefix = "atom.shapeKind." });
             l.Add(new EditField { Key = "fill",    Label = Loc.T("atom.label.fill"),     Kind = EditKind.Color });
             l.Add(new EditField { Key = "stroke",  Label = Loc.T("atom.label.stroke"),     Kind = EditKind.Color });
             l.Add(new EditField { Key = "strokeW", Label = Loc.T("atom.label.strokeWidth"), Kind = EditKind.Number, Min = 0, Max = 60, Hint = Loc.T("atom.hint.strokeW") });

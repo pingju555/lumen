@@ -200,7 +200,7 @@ namespace Lumen
             var home = _pages.CurrentPage;
             home.Atoms.Add(new TextAtom { TextProp = new FormulaValue("电量 $bi(level)$%"), Bounds = new Rect(120, 120, 320, 40) });
             home.Atoms.Add(new ProgressAtom { ValueProp = new FormulaValue("$bi(level)$"), Bounds = new Rect(120, 170, 240, 16) });
-            home.Atoms.Add(new ShapeAtom { KindProp = new StaticValue("RoundRect"), FillProp = new StaticValue("#FF4488FF"), Bounds = new Rect(120, 220, 160, 120) });
+            home.Atoms.Add(new ShapeAtom { KindProp = new StaticValue("Rect"), RadiusProp = new StaticValue("14"), FillProp = new StaticValue("#FF4488FF"), Bounds = new Rect(120, 220, 160, 120) });
             home.Atoms.Add(new IconAtom { Bounds = new Rect(120, 360, 80, 80) });
 
             _pages.Add(Loc.T("main.canvasPage"));

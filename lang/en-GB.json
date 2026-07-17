@@ -336,7 +336,6 @@
   "atom.texture.Fabric": "Fabric",
   "atom.texture.Liquid": "Liquid",
   "atom.shapeKind.Rect": "Rectangle",
-  "atom.shapeKind.RoundRect": "Rounded Rectangle",
   "atom.shapeKind.Ellipse": "Ellipse",
   "atom.shapeKind.Line": "Line",
   "atom.dash.Solid": "Solid",

@@ -336,7 +336,6 @@
   "atom.texture.Fabric": "布纹",
   "atom.texture.Liquid": "液态",
   "atom.shapeKind.Rect": "矩形",
-  "atom.shapeKind.RoundRect": "圆角矩形",
   "atom.shapeKind.Ellipse": "椭圆",
   "atom.shapeKind.Line": "线",
   "atom.dash.Solid": "实线",
