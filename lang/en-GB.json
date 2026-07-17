@@ -337,10 +337,9 @@
   "atom.texture.Liquid": "Liquid",
   "atom.shapeKind.Rect": "Rectangle",
   "atom.shapeKind.Ellipse": "Ellipse",
-  "atom.shapeKind.Line": "Line",
   "atom.dash.Solid": "Solid",
   "atom.dash.Dash": "Dashed",
   "atom.dash.Dot": "Dotted",
   "atom.hint.textureColor": "Fill affects only Plastic/Metal/Neon. Frosted/Glass/Liquid/Holographic are translucent; Wood/Marble/Carbon/Paper/Fabric use fixed colors.",
-  "atom.hint.strokeW": "Stroke width; in Line mode this value is the line thickness."
+  "atom.hint.strokeW": "Stroke width. For a line, use a Rectangle with one side very small."
 }
