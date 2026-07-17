@@ -265,6 +265,8 @@
   "atom.label.offsetY": "Y偏移(px)",
   "atom.label.opacity": "透明度",
   "atom.label.rotation": "旋转(°)",
+  "atom.label.width": "宽度(px)",
+  "atom.label.height": "高度(px)",
   "atom.label.animEnter": "进场动画",
   "atom.label.animLoop": "循环动画",
   "atom.label.animEnterDur": "进场时长(ms)",
@@ -339,5 +341,6 @@
   "atom.shapeKind.Line": "线",
   "atom.dash.Solid": "实线",
   "atom.dash.Dash": "虚线",
-  "atom.dash.Dot": "点线"
+  "atom.dash.Dot": "点线",
+  "atom.hint.textureColor": "填充色仅影响 塑料感/金属/霓虹 三种质感；毛玻璃/玻璃感/液态/虹彩为透明显色，木纹/大理石/碳纤维/纸张/布纹为固定配色。"
 }

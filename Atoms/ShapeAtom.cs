@@ -51,7 +51,7 @@ namespace Lumen.Atoms
             return _root;
         }
 
-        public override void Update() => ApplyDynamic();
+        public override void Update() { base.Update(); ApplyDynamic(); }
 
         private Shape BuildShape()
         {
@@ -69,77 +69,86 @@ namespace Lumen.Atoms
             return s;
         }
 
+        private static DropShadowEffect MakeShadow() => new DropShadowEffect { Color = Colors.Black, BlurRadius = 8, ShadowDepth = 3, Opacity = 0.5 };
+
         private void ApplyDynamic()
         {
-            if (_shape == null) return;
+            if (_shape == null || _gloss == null) return;
             if (Ctx == null) return;
-            _shape.Fill = ResolveBrush(FillProp, Ctx, Brushes.Transparent);
+
+            var fillBrush = ResolveBrush(FillProp, Ctx, Brushes.Transparent);
             var strokeBrush = ResolveBrush(StrokeProp, Ctx, Brushes.Transparent);
-            _shape.Stroke = strokeBrush;
-            if (double.TryParse(Txt(StrokeWProp, Ctx), out var w) && w >= 0) _shape.StrokeThickness = w;
-            double r = 0;
-            if (double.TryParse(Txt(RadiusProp, Ctx), out r) && r > 0 && _shape is Rectangle rect)
-            {
-                rect.RadiusX = r;
-                rect.RadiusY = r;
-            }
+            double.TryParse(Txt(StrokeWProp, Ctx), out var w); if (w < 0) w = 0;
+            double.TryParse(Txt(RadiusProp, Ctx), out double r); if (r < 0) r = 0;
             switch (Txt(DashProp, Ctx).Trim().ToLowerInvariant())
             {
                 case "dash": _shape.StrokeDashArray = new DoubleCollection { 4, 3 }; break;
                 case "dot":  _shape.StrokeDashArray = new DoubleCollection { 1, 3 }; break;
                 default:     _shape.StrokeDashArray = null; break;
             }
-            if (Txt(ShadowProp, Ctx).Trim() == "1")
-                _shape.Effect = new DropShadowEffect { Color = Colors.Black, BlurRadius = 8, ShadowDepth = 3, Opacity = 0.5 };
-            else _shape.Effect = null;
-
-            // 纹理效果：在形状之上叠加一层「同几何质感层」，模拟多种材质质感（不依赖 DWM 全窗模糊）
-            var tex = ParseTexture(Txt(TextureProp, Ctx));
-            if (_gloss != null)
+            if (r > 0 && _shape is Rectangle rect)
             {
-                if (tex == ShapeTexture.None || _gloss is Line)
+                rect.RadiusX = r;
+                rect.RadiusY = r;
+            }
+            bool shadow = Txt(ShadowProp, Ctx).Trim() == "1";
+            var tex = ParseTexture(Txt(TextureProp, Ctx));
+            bool isLine = _gloss is Line;
+
+            if (tex == ShapeTexture.None || isLine)
+            {
+                // 无纹理 / 线（线无填充面积）：_shape 直接承载外观
+                _gloss.Visibility = Visibility.Collapsed;
+                _shape.Fill = fillBrush;
+                _shape.Stroke = strokeBrush;
+                _shape.StrokeThickness = w;
+                _shape.Effect = shadow ? MakeShadow() : null;
+            }
+            else
+            {
+                // 纹理模式：_shape 退为透明背衬，视觉完全由 _gloss 承载。
+                // 这样半透纹理(Glass/Frosted/Liquid/虹彩)能真正透出桌面，不透明纹理(Wood/Marble/...)照常显示。
+                _shape.Fill = Brushes.Transparent;
+                _shape.Stroke = Brushes.Transparent;
+                _shape.StrokeThickness = 0;
+                _shape.Effect = null;
+
+                _gloss.Visibility = Visibility.Visible;
+                var baseColor = GetDominantColor(fillBrush);
+                _gloss.Fill = BuildTextureBrush(tex, baseColor);
+                // 描边/发光按质感类型定制，其余沿用用户描边
+                switch (tex)
                 {
-                    _gloss.Visibility = Visibility.Collapsed;
+                    case ShapeTexture.Frosted:
+                    case ShapeTexture.Glass:
+                        _gloss.Stroke = new SolidColorBrush(Color.FromArgb(130, 255, 255, 255));
+                        _gloss.StrokeThickness = Math.Max(w, 1);
+                        _gloss.Effect = shadow ? MakeShadow() : null;
+                        break;
+                    case ShapeTexture.Metal:
+                        _gloss.Stroke = new SolidColorBrush(Color.FromRgb(222, 228, 234));
+                        _gloss.StrokeThickness = Math.Max(w, 1.5);
+                        _gloss.Effect = shadow ? MakeShadow() : null;
+                        break;
+                    case ShapeTexture.Neon:
+                    {
+                        var neon = Brighten(baseColor, 0.65);
+                        _gloss.Stroke = new SolidColorBrush(neon);
+                        _gloss.StrokeThickness = Math.Max(w, 2.5);
+                        _gloss.Effect = new DropShadowEffect { Color = neon, BlurRadius = 14, ShadowDepth = 0, Opacity = 0.95 };
+                        break;
+                    }
+                    default:
+                        _gloss.Stroke = strokeBrush;
+                        _gloss.StrokeThickness = w;
+                        _gloss.Effect = shadow ? MakeShadow() : null;
+                        break;
                 }
-                else
+                _gloss.StrokeDashArray = _shape.StrokeDashArray;
+                if (r > 0 && _gloss is Rectangle gr)
                 {
-                    _gloss.Visibility = Visibility.Visible;
-                    var baseColor = GetDominantColor(_shape.Fill);
-                    _gloss.Fill = BuildTextureBrush(tex, baseColor);
-                    // 描边/发光按质感类型定制，其余沿用用户描边
-                    switch (tex)
-                    {
-                        case ShapeTexture.Frosted:
-                        case ShapeTexture.Glass:
-                            _gloss.Stroke = new SolidColorBrush(Color.FromArgb(130, 255, 255, 255));
-                            _gloss.StrokeThickness = Math.Max(_shape.StrokeThickness, 1);
-                            _gloss.Effect = null;
-                            break;
-                        case ShapeTexture.Metal:
-                            _gloss.Stroke = new SolidColorBrush(Color.FromRgb(222, 228, 234));
-                            _gloss.StrokeThickness = Math.Max(_shape.StrokeThickness, 1.5);
-                            _gloss.Effect = null;
-                            break;
-                        case ShapeTexture.Neon:
-                        {
-                            var neon = Brighten(baseColor, 0.65);
-                            _gloss.Stroke = new SolidColorBrush(neon);
-                            _gloss.StrokeThickness = Math.Max(_shape.StrokeThickness, 2.5);
-                            _gloss.Effect = new DropShadowEffect { Color = neon, BlurRadius = 14, ShadowDepth = 0, Opacity = 0.95 };
-                            break;
-                        }
-                        default:
-                            _gloss.Stroke = strokeBrush;
-                            _gloss.StrokeThickness = _shape.StrokeThickness;
-                            _gloss.Effect = null;
-                            break;
-                    }
-                    _gloss.StrokeDashArray = _shape.StrokeDashArray;
-                    if (r > 0 && _gloss is Rectangle gr)
-                    {
-                        gr.RadiusX = r;
-                        gr.RadiusY = r;
-                    }
+                    gr.RadiusX = r;
+                    gr.RadiusY = r;
                 }
             }
             ApplyCommon();
@@ -345,7 +354,7 @@ namespace Lumen.Atoms
             l.Add(new EditField { Key = "radius", Label = Loc.T("atom.label.radius"), Kind = EditKind.Slider, Min = 0, Max = 120 });
             l.Add(new EditField { Key = "dash", Label = Loc.T("atom.label.dash"), Kind = EditKind.Choice, Choices = new[] { "Solid", "Dash", "Dot" }, ChoiceLocPrefix = "atom.dash." });
             l.Add(new EditField { Key = "shadow", Label = Loc.T("atom.label.shadow"), Kind = EditKind.Bool });
-            l.Add(new EditField { Key = "texture", Label = Loc.T("atom.label.texture"), Kind = EditKind.Choice, Choices = new[] { "None", "Frosted", "Glass", "Plastic", "Metal", "Neon", "Matte", "Wood", "Marble", "Carbon", "Holographic", "Paper", "Fabric", "Liquid" }, ChoiceLocPrefix = "atom.texture." });
+            l.Add(new EditField { Key = "texture", Label = Loc.T("atom.label.texture"), Kind = EditKind.Choice, Choices = new[] { "None", "Frosted", "Glass", "Plastic", "Metal", "Neon", "Matte", "Wood", "Marble", "Carbon", "Holographic", "Paper", "Fabric", "Liquid" }, ChoiceLocPrefix = "atom.texture.", Hint = Loc.T("atom.hint.textureColor") });
             return l;
         }
     }

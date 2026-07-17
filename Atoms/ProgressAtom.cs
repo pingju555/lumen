@@ -60,7 +60,7 @@ namespace Lumen.Atoms
             return _root;
         }
 
-        public override void Update() => ApplyDynamic();
+        public override void Update() { base.Update(); ApplyDynamic(); }
 
         private void ApplyDynamic()
         {
@@ -113,6 +113,7 @@ namespace Lumen.Atoms
         /// <summary>resize 后同步进度条/圆环尺寸。</summary>
         protected override void SyncSize()
         {
+            if (_panel != null) { _panel.Width = Bounds.Width; _panel.Height = Bounds.Height; }
             if (_el == null) return;
             _el.Width = Bounds.Width;
             _el.Height = Bounds.Height;

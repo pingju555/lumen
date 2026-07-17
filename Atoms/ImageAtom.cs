@@ -35,7 +35,7 @@ namespace Lumen.Atoms
             return _root;
         }
 
-        public override void Update() => ApplyDynamic();
+        public override void Update() { base.Update(); ApplyDynamic(); }
 
         private void ApplyDynamic()
         {

@@ -100,6 +100,10 @@ namespace Lumen.Atoms
         public PropertyValue OpacityProp = new StaticValue("1");
         public PropertyValue RotationProp = new StaticValue("0");
 
+        /// <summary>尺寸（宽/高，px）：经属性编辑器或公式/变量绑定；null 表示沿用 Bounds 构造值。ApplySize 解析后写回 Bounds 并同步渲染。</summary>
+        public PropertyValue WidthProp;
+        public PropertyValue HeightProp;
+
         /// <summary>桌面模式左键点击触发的行为（P5 行为系统）；None 表示无动作。</summary>
         public AtomAction ClickAction { get; set; } = AtomAction.None();
 
@@ -143,12 +147,43 @@ namespace Lumen.Atoms
         /// <summary>内容尺寸随 Bounds 变化（resize 后调用）；默认无操作，显式尺寸的内容（图形/进度条）重写。</summary>
         protected virtual void SyncSize() { }
 
+        /// <summary>
+        /// 按 WidthProp/HeightProp 解析实际尺寸，写回 Bounds 并同步渲染层（外层 wrapper / 内部 grid / 内容 SyncSize）。
+        /// 仅在数值确实变化时才重排，避免每帧无意义刷新；WidthProp/HeightProp 为 null 时沿用当前 Bounds（无操作）。
+        /// 解析支持公式/变量（经 Ctx）；Ctx 为空时退化为 Materialize 文本。
+        /// </summary>
+        protected void ApplySize()
+        {
+            double w = Bounds.Width, h = Bounds.Height;
+            if (WidthProp != null && TryParseSize(WidthProp, out var wv)) w = wv;
+            if (HeightProp != null && TryParseSize(HeightProp, out var hv)) h = hv;
+            if (Math.Abs(w - Bounds.Width) < 0.5 && Math.Abs(h - Bounds.Height) < 0.5) return;
+            Bounds = new Rect(Bounds.X, Bounds.Y, w, h);
+            if (RenderMode == RenderModeKind.Standalone && _root != null)
+            {
+                if (_root is FrameworkElement feR) { feR.Width = w; feR.Height = h; }
+                if (_rootGrid != null) { _rootGrid.Width = w; _rootGrid.Height = h; }
+            }
+            SyncSize();
+        }
+
+        private bool TryParseSize(PropertyValue p, out double v)
+        {
+            v = 0;
+            if (!double.TryParse(Txt(p, Ctx), out var d)) return false;
+            if (d < 1 || d > 8192) return false;
+            v = d;
+            return true;
+        }
+
         /// <summary>部件级菜单的可编辑字段（基类含通用 透明度/旋转/锚点/偏移；子类按类型追加）。</summary>
         public virtual List<EditField> EditFields() => new()
         {
             new EditField { Key = "anchor",  Label = Loc.T("atom.label.anchor"),  Kind = EditKind.Choice, Category = FieldCategory.Layout, Choices = new[] { "TopLeft", "TopCenter", "TopRight", "MiddleLeft", "Center", "MiddleRight", "BottomLeft", "BottomCenter", "BottomRight" } },
             new EditField { Key = "offsetX", Label = Loc.T("atom.label.offsetX"), Kind = EditKind.Number, Category = FieldCategory.Layout, Min = -9999, Max = 9999 },
             new EditField { Key = "offsetY", Label = Loc.T("atom.label.offsetY"), Kind = EditKind.Number, Category = FieldCategory.Layout, Min = -9999, Max = 9999 },
+            new EditField { Key = "width",  Label = Loc.T("atom.label.width"),  Kind = EditKind.Number, Category = FieldCategory.Layout, Min = 1, Max = 4096 },
+            new EditField { Key = "height", Label = Loc.T("atom.label.height"), Kind = EditKind.Number, Category = FieldCategory.Layout, Min = 1, Max = 4096 },
             new EditField { Key = "opacity",  Label = Loc.T("atom.label.opacity"),  Kind = EditKind.Slider, Category = FieldCategory.Layout, Min = 0, Max = 1 },
             new EditField { Key = "rotation", Label = Loc.T("atom.label.rotation"), Kind = EditKind.Slider, Category = FieldCategory.Layout, Min = -180, Max = 180 },
             new EditField { Key = "animEnter", Label = Loc.T("atom.label.animEnter"), Kind = EditKind.Choice, Category = FieldCategory.Animation, Choices = new[] { "None", "Fade", "Slide", "Zoom", "Drop" } },
@@ -158,7 +193,7 @@ namespace Lumen.Atoms
         };
 
         public abstract UIElement Render();
-        public virtual void Update() { }
+        public virtual void Update() { ApplySize(); }
 
         /// <summary>持久化：导出属性三元组（子类重写）。</summary>
         public virtual Dictionary<string, PropertyValue> GetProps() => new();
@@ -639,6 +674,8 @@ namespace Lumen.Atoms
             d["animLoop"] = AnimLoopProp;
             d["animEnterDur"] = AnimEnterDurProp;
             d["animLoopDur"] = AnimLoopDurProp;
+            d["width"] = WidthProp ?? new StaticValue(Bounds.Width.ToString("0"));
+            d["height"] = HeightProp ?? new StaticValue(Bounds.Height.ToString("0"));
         }
 
         /// <summary>从 props 读回通用属性（子类 SetProps 末尾调用）。</summary>
@@ -659,6 +696,9 @@ namespace Lumen.Atoms
             if (props.TryGetValue("animLoop", out var al)) AnimLoopProp = al;
             if (props.TryGetValue("animEnterDur", out var aed)) AnimEnterDurProp = aed;
             if (props.TryGetValue("animLoopDur", out var ald)) AnimLoopDurProp = ald;
+            if (props.TryGetValue("width", out var w)) WidthProp = w;
+            if (props.TryGetValue("height", out var h)) HeightProp = h;
+            ApplySize();
         }
 
         /// <summary>深拷贝：经注册表按 Type 建新实例，复制 Bounds + 属性三元组；Container 递归克隆子原子。</summary>

@@ -265,6 +265,8 @@
   "atom.label.offsetY": "Y offset (px)",
   "atom.label.opacity": "Opacity",
   "atom.label.rotation": "Rotation (°)",
+  "atom.label.width": "Width (px)",
+  "atom.label.height": "Height (px)",
   "atom.label.animEnter": "Entrance animation",
   "atom.label.animLoop": "Loop animation",
   "atom.label.animEnterDur": "Entrance duration (ms)",
@@ -339,5 +341,6 @@
   "atom.shapeKind.Line": "Line",
   "atom.dash.Solid": "Solid",
   "atom.dash.Dash": "Dashed",
-  "atom.dash.Dot": "Dotted"
+  "atom.dash.Dot": "Dotted",
+  "atom.hint.textureColor": "Fill affects only Plastic/Metal/Neon. Frosted/Glass/Liquid/Holographic are translucent; Wood/Marble/Carbon/Paper/Fabric use fixed colors."
 }

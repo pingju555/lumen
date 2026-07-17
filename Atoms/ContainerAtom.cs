@@ -53,6 +53,7 @@ namespace Lumen.Atoms
         public override void Update()
         {
             // 自身视觉（背景/圆角/描边/内边距）+ 递归重算子原子动态属性
+            base.Update();
             ApplyDynamic();
             foreach (var c in Children) c.Update();
         }

@@ -166,6 +166,15 @@ namespace Lumen.Ui
                 input.Children.Add(st.ValueHost);
                 input.Children.Add(st.FormulaHost);
                 input.Children.Add(st.GvHost);
+                if (!string.IsNullOrEmpty(f.Hint))
+                    input.Children.Add(new TextBlock
+                    {
+                        Text = f.Hint,
+                        FontSize = 10,
+                        Foreground = new SolidColorBrush(Color.FromRgb(0x9A, 0x9A, 0x9A)),
+                        TextWrapping = TextWrapping.Wrap,
+                        Margin = new Thickness(0, 4, 0, 0)
+                    });
                 Grid.SetColumn(input, 1);
                 row.Children.Add(input);
 
