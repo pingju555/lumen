@@ -1,6 +1,7 @@
 <Window x:Class="Lumen.LumenWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:Lumen.I18n"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
@@ -9,7 +10,7 @@
         ResizeMode="NoResize"
         ShowActivated="False"
         WindowState="Normal"
-        Title="Lumen">
+        Title="{loc:Loc main.title}">
     <Grid x:Name="RootGrid" Background="Transparent">
         <!-- 页容器：LayerStack 挂载三类预设层（壁纸/网格/画布），按当前页重组 -->
         <Grid x:Name="PageHost" Background="Transparent"/>

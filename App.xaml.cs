@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using System.Windows;
 using Lumen.Core;
+using Lumen.I18n;
 
 namespace Lumen
 {
@@ -30,6 +31,10 @@ namespace Lumen
             };
 
             base.OnStartup(e);
+
+            // 启动早期确定 UI 语言（读 meta 持久化 / 否则跟随系统 culture）并预载语言包
+            Loc.Init();
+
             var args = Environment.GetCommandLineArgs();
 
             // 部署/调试入口：仅注册表自启，不启动 UI

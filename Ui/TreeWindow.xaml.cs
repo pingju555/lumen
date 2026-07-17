@@ -8,6 +8,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Lumen.Atoms;
 using Lumen.Pages;
+using Lumen.I18n;
 
 namespace Lumen.Ui
 {
@@ -48,7 +49,7 @@ namespace Lumen.Ui
         {
             _page = page;
             _pageManager = mgr;
-            Title = $"部件树 — {page?.Name ?? "(无)"}";
+            Title = Loc.T("tree.title", page?.Name ?? Loc.T("tree.none"));
             RebuildTree();
         }
 
@@ -81,7 +82,7 @@ namespace Lumen.Ui
 
             // 右键菜单：重命名
             var m = new ContextMenu();
-            var rename = new MenuItem { Header = "重命名" };
+            var rename = new MenuItem { Header = Loc.T("tree.rename") };
             rename.Click += (s, e) => RenameAtom(atom);
             m.Items.Add(rename);
             item.ContextMenu = m;
@@ -195,7 +196,7 @@ namespace Lumen.Ui
         {
             var dlg = new Window
             {
-                Title = "重命名",
+                Title = Loc.T("tree.rename"),
                 Width = 280, Height = 130,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 Owner = this,
@@ -210,7 +211,7 @@ namespace Lumen.Ui
             var sp = new StackPanel { Margin = new Thickness(10) };
             sp.Children.Add(new TextBlock
             {
-                Text = "新名称：", FontSize = 12,
+                Text = Loc.T("tree.newName"), FontSize = 12,
                 Foreground = new SolidColorBrush(Color.FromRgb(0xD4, 0xD4, 0xD4)),
                 Margin = new Thickness(0, 0, 0, 6)
             });
@@ -230,7 +231,7 @@ namespace Lumen.Ui
                 HorizontalAlignment = HorizontalAlignment.Right,
                 Margin = new Thickness(0, 8, 0, 0)
             };
-            var ok = new Button { Content = "确定", Width = 70, Margin = new Thickness(0, 0, 6, 0) };
+            var ok = new Button { Content = Loc.T("common.ok"), Width = 70, Margin = new Thickness(0, 0, 6, 0) };
             ok.Click += (s, e) =>
             {
                 var newName = tb.Text.Trim();
@@ -241,7 +242,7 @@ namespace Lumen.Ui
                 }
                 dlg.Close();
             };
-            var cancel = new Button { Content = "取消", Width = 70 };
+            var cancel = new Button { Content = Loc.T("common.cancel"), Width = 70 };
             cancel.Click += (s, e) => dlg.Close();
             btnPanel.Children.Add(ok);
             btnPanel.Children.Add(cancel);
@@ -403,7 +404,7 @@ namespace Lumen.Ui
 
             public AtomTypePicker()
             {
-                Title = "选择原子类型";
+                Title = Loc.T("tree.pickType");
                 Width = 200; Height = 280;
                 WindowStartupLocation = WindowStartupLocation.CenterOwner;
                 Background = new SolidColorBrush(Color.FromRgb(0x1E, 0x1E, 0x1E));
@@ -417,7 +418,7 @@ namespace Lumen.Ui
                 var sp = new StackPanel { Margin = new Thickness(10) };
                 sp.Children.Add(new TextBlock
                 {
-                    Text = "选择原子类型", FontSize = 14, FontWeight = FontWeights.Bold,
+                    Text = Loc.T("tree.pickType"), FontSize = 14, FontWeight = FontWeights.Bold,
                     Foreground = new SolidColorBrush(Colors.White), Margin = new Thickness(0, 0, 0, 8)
                 });
 
@@ -427,7 +428,8 @@ namespace Lumen.Ui
                     Foreground = new SolidColorBrush(Color.FromRgb(0xF0, 0xF0, 0xF0)),
                     BorderBrush = new SolidColorBrush(Color.FromRgb(0x3F, 0x3F, 0x46))
                 };
-                foreach (var t in Types) lb.Items.Add(t);
+                foreach (var t in Types)
+                    lb.Items.Add(new ListBoxItem { Content = Loc.T("atom.type." + t.ToLower()), Tag = t });
                 lb.SelectedIndex = 0;
                 sp.Children.Add(lb);
 
@@ -437,13 +439,13 @@ namespace Lumen.Ui
                     HorizontalAlignment = HorizontalAlignment.Right,
                     Margin = new Thickness(0, 8, 0, 0)
                 };
-                var okBtn = new Button { Content = "确定", Width = 70, Margin = new Thickness(0, 0, 6, 0) };
+                var okBtn = new Button { Content = Loc.T("common.ok"), Width = 70, Margin = new Thickness(0, 0, 6, 0) };
                 okBtn.Click += (s, e) =>
                 {
-                    if (lb.SelectedItem is string sel) SelectedType = sel;
+                    if (lb.SelectedItem is ListBoxItem li && li.Tag is string tag) SelectedType = tag;
                     DialogResult = true;
                 };
-                var cancelBtn = new Button { Content = "取消", Width = 70 };
+                var cancelBtn = new Button { Content = Loc.T("common.cancel"), Width = 70 };
                 cancelBtn.Click += (s, e) => DialogResult = false;
                 btnPanel.Children.Add(okBtn);
                 btnPanel.Children.Add(cancelBtn);

@@ -5,6 +5,7 @@ using System.Windows.Media;
 using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 using Lumen.Formula;
+using Lumen.I18n;
 
 namespace Lumen.Atoms
 {
@@ -109,13 +110,13 @@ namespace Lumen.Atoms
         public override List<EditField> EditFields()
         {
             var l = base.EditFields();
-            l.Add(new EditField { Key = "kind",    Label = "形状",     Kind = EditKind.Choice, Choices = new[] { "Rect", "RoundRect", "Ellipse", "Line" } });
-            l.Add(new EditField { Key = "fill",    Label = "填充",     Kind = EditKind.Color });
-            l.Add(new EditField { Key = "stroke",  Label = "描边",     Kind = EditKind.Color });
-            l.Add(new EditField { Key = "strokeW", Label = "描边宽(px)", Kind = EditKind.Number, Min = 0, Max = 60 });
-            l.Add(new EditField { Key = "radius", Label = "圆角(px)", Kind = EditKind.Slider, Min = 0, Max = 120 });
-            l.Add(new EditField { Key = "dash", Label = "虚线", Kind = EditKind.Choice, Choices = new[] { "Solid", "Dash", "Dot" } });
-            l.Add(new EditField { Key = "shadow", Label = "阴影", Kind = EditKind.Bool });
+            l.Add(new EditField { Key = "kind",    Label = Loc.T("atom.label.shape"),     Kind = EditKind.Choice, Choices = new[] { "Rect", "RoundRect", "Ellipse", "Line" } });
+            l.Add(new EditField { Key = "fill",    Label = Loc.T("atom.label.fill"),     Kind = EditKind.Color });
+            l.Add(new EditField { Key = "stroke",  Label = Loc.T("atom.label.stroke"),     Kind = EditKind.Color });
+            l.Add(new EditField { Key = "strokeW", Label = Loc.T("atom.label.strokeWidth"), Kind = EditKind.Number, Min = 0, Max = 60 });
+            l.Add(new EditField { Key = "radius", Label = Loc.T("atom.label.radius"), Kind = EditKind.Slider, Min = 0, Max = 120 });
+            l.Add(new EditField { Key = "dash", Label = Loc.T("atom.label.dash"), Kind = EditKind.Choice, Choices = new[] { "Solid", "Dash", "Dot" } });
+            l.Add(new EditField { Key = "shadow", Label = Loc.T("atom.label.shadow"), Kind = EditKind.Bool });
             return l;
         }
     }

@@ -1,6 +1,7 @@
 <UserControl x:Class="Lumen.Ui.PropertyEditorPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:Lumen.I18n"
              Background="Transparent">
     <UserControl.Resources>
         <Style TargetType="TextBox">
@@ -176,12 +177,12 @@
 
             <TabControl x:Name="Tabs" Grid.Row="1" Margin="0,0,0,4"/>
 
-            <TextBlock Grid.Row="2" Text="每个字段可切 [值|公式|变量]：公式态可插入函数，变量态引用全局变量（gv）。"
+            <TextBlock Grid.Row="2" Text="{loc:Loc prop.fieldHint}"
                        FontSize="10" Foreground="#8A8A8A" Margin="0,10,0,0" TextWrapping="Wrap"/>
 
             <StackPanel x:Name="ButtonRow" Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-                <Button x:Name="OkBtn" Content="确定" Width="80" Margin="0,0,8,0" Click="Ok_Click"/>
-                <Button x:Name="CancelBtn" Content="取消" Width="80" Click="Cancel_Click"/>
+                <Button x:Name="OkBtn" Content="{loc:Loc prop.ok}" Width="80" Margin="0,0,8,0" Click="Ok_Click"/>
+                <Button x:Name="CancelBtn" Content="{loc:Loc prop.cancel}" Width="80" Click="Cancel_Click"/>
             </StackPanel>
         </Grid>
     </Border>

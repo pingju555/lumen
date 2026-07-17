@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using Lumen.Formula;
+using Lumen.I18n;
 
 namespace Lumen.Atoms
 {
@@ -115,12 +116,12 @@ namespace Lumen.Atoms
         public override List<EditField> EditFields()
         {
             var l = base.EditFields();
-            l.Add(new EditField { Key = "layout", Label = "布局", Kind = EditKind.Choice, Choices = new[] { "Overlap", "Stack", "Series" } });
-            l.Add(new EditField { Key = "bg", Label = "背景色", Kind = EditKind.Color });
-            l.Add(new EditField { Key = "radius", Label = "圆角(px)", Kind = EditKind.Slider, Min = 0, Max = 200 });
-            l.Add(new EditField { Key = "border", Label = "描边色", Kind = EditKind.Color });
-            l.Add(new EditField { Key = "borderW", Label = "描边宽(px)", Kind = EditKind.Slider, Min = 0, Max = 40 });
-            l.Add(new EditField { Key = "padding", Label = "内边距(px)", Kind = EditKind.Slider, Min = 0, Max = 80 });
+            l.Add(new EditField { Key = "layout", Label = Loc.T("atom.label.layout"), Kind = EditKind.Choice, Choices = new[] { "Overlap", "Stack", "Series" } });
+            l.Add(new EditField { Key = "bg", Label = Loc.T("atom.label.bgColor"), Kind = EditKind.Color });
+            l.Add(new EditField { Key = "radius", Label = Loc.T("atom.label.radius"), Kind = EditKind.Slider, Min = 0, Max = 200 });
+            l.Add(new EditField { Key = "border", Label = Loc.T("atom.label.borderColor"), Kind = EditKind.Color });
+            l.Add(new EditField { Key = "borderW", Label = Loc.T("atom.label.borderWidth"), Kind = EditKind.Slider, Min = 0, Max = 40 });
+            l.Add(new EditField { Key = "padding", Label = Loc.T("atom.label.padding"), Kind = EditKind.Slider, Min = 0, Max = 80 });
             return l;
         }
     }

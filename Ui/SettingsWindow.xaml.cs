@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using Microsoft.Win32;
 using Lumen.Core;
+using Lumen.I18n;
 using Lumen.Pages;
 using Lumen.Persistence;
 
@@ -12,8 +13,8 @@ namespace Lumen.Ui
 {
     /// <summary>
     /// P6-02 设置面板：独立 Topmost 窗口（不污染覆盖层主窗，浮于其上）。
-    /// 配置项：自启 / 网格间距 / 当前页背景 / 覆盖层显隐 / 配置导入导出。
-    /// 多屏为 v2 占位。
+    /// 配置项：自启 / 网格间距 / 当前页背景 / 覆盖层显隐 / 配置导入导出 / 界面语言。
+    /// 多屏为 v2 占位。所有文案经 Loc（zh-CN / en-GB），切换语言后本窗通过 LangChanged 自刷新。
     /// </summary>
     public partial class SettingsWindow : Window
     {
@@ -26,6 +27,11 @@ namespace Lumen.Ui
             _owner = owner;
             BindEvents();
             LoadCurrent();
+
+            InitLanguageCombo();
+            Loc.LangChanged += OnLangChanged;
+            Closing += (s, e) => Loc.LangChanged -= OnLangChanged;
+            RefreshTexts();
         }
 
         private void BindEvents()
@@ -42,6 +48,43 @@ namespace Lumen.Ui
             BtnExport.Click += BtnExport_Click;
             BtnImport.Click += BtnImport_Click;
             BtnClose.Click += (s, e) => Close();
+        }
+
+        private void InitLanguageCombo()
+        {
+            CmbLang.ItemsSource = Loc.Available;
+            CmbLang.SelectedValue = Loc.Cur;
+        }
+
+        private void CmbLang_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (CmbLang.SelectedValue is string code && code != Loc.Cur)
+                Loc.Load(code); // 触发 LangChanged -> OnLangChanged -> RefreshTexts
+        }
+
+        private void OnLangChanged(object sender, EventArgs e) => RefreshTexts();
+
+        private void RefreshTexts()
+        {
+            TxtTitle.Text = Loc.T("settings.title");
+            ChkAutostart.Content = Loc.T("settings.autostart");
+            TxtAutostartHint.Text = Loc.T("settings.autostart.hint");
+            TxtGrid.Text = Loc.T("settings.gridSize");
+            TxtPageBg.Text = Loc.T("settings.pageBg");
+            RbSolid.Content = Loc.T("settings.bg.solid");
+            RbImage.Content = Loc.T("settings.bg.image");
+            BtnBrowseBg.Content = Loc.T("settings.browse");
+            BtnApplyBg.Content = Loc.T("settings.applyBg");
+            TxtVisibility.Text = Loc.T("settings.visibility");
+            UpdateToggleLabel();
+            TxtHotkey.Text = Loc.T("settings.hotkey");
+            TxtProfileIo.Text = Loc.T("settings.profileIo");
+            BtnExport.Content = Loc.T("settings.export");
+            BtnImport.Content = Loc.T("settings.import");
+            TxtMulti.Text = Loc.T("settings.multi");
+            TxtMultiTip.Text = Loc.T("settings.multi.tip");
+            BtnClose.Content = Loc.T("settings.close");
+            CmbLang.SelectedValue = Loc.Cur;
         }
 
         private void LoadCurrent()
@@ -84,7 +127,7 @@ namespace Lumen.Ui
 
         private void BtnBrowseBg_Click(object sender, RoutedEventArgs e)
         {
-            var dlg = new OpenFileDialog { Filter = "图片文件|*.png;*.jpg;*.jpeg;*.bmp;*.gif|所有文件|*.*", Title = "选择背景图片" };
+            var dlg = new OpenFileDialog { Filter = Loc.T("dlg.bgImage.filter"), Title = Loc.T("dlg.bgImage.title") };
             if (dlg.ShowDialog() == true) TxtBgImage.Text = dlg.FileName;
         }
 
@@ -101,28 +144,28 @@ namespace Lumen.Ui
                 {
                     var path = TxtBgImage.Text.Trim();
                     if (string.IsNullOrEmpty(path) || !File.Exists(path))
-                        throw new Exception("图片路径无效或文件不存在");
+                        throw new Exception(Loc.T("msg.bgPathInvalid"));
                     _owner.ApplyBackground("image", path);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "背景应用失败：" + ex.Message, "背景", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(this, Loc.T("msg.bgFail", ex.Message), Loc.T("settings.applyBg"), MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
         private void UpdateToggleLabel() =>
-            BtnToggle.Content = (_owner.Visibility == Visibility.Visible) ? "隐藏覆盖层" : "显示覆盖层";
+            BtnToggle.Content = (_owner.Visibility == Visibility.Visible) ? Loc.T("settings.hide") : Loc.T("settings.show");
 
         private void BtnExport_Click(object sender, RoutedEventArgs e)
         {
-            var dlg = new SaveFileDialog { Filter = "Lumen 配置档|*.json|所有文件|*.*", FileName = _owner.ActiveProfile + ".lumenprofile" };
+            var dlg = new SaveFileDialog { Filter = Loc.T("dlg.profileExport.filter"), FileName = _owner.ActiveProfile + ".lumenprofile" };
             if (dlg.ShowDialog() == true) _owner.ExportActiveProfile(dlg.FileName);
         }
 
         private void BtnImport_Click(object sender, RoutedEventArgs e)
         {
-            var dlg = new OpenFileDialog { Filter = "Lumen 配置档|*.json|所有文件|*.*", Title = "导入配置档" };
+            var dlg = new OpenFileDialog { Filter = Loc.T("dlg.profileExport.filter"), Title = Loc.T("dlg.profileImport.title") };
             if (dlg.ShowDialog() == true) _owner.ImportProfileFile(dlg.FileName);
         }
     }

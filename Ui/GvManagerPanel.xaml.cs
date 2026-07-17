@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using Lumen.Globals;
+using Lumen.I18n;
 
 namespace Lumen.Ui
 {
@@ -25,7 +26,7 @@ namespace Lumen.Ui
         }
 
         private static readonly GvType[] Types = { GvType.Number, GvType.Text, GvType.Color, GvType.Font, GvType.List };
-        private static readonly string[] TypeLabels = { "数字", "文本", "颜色", "字体", "列表" };
+        private static readonly string[] TypeLabels = { Loc.T("gv.type.number"), Loc.T("gv.type.text"), Loc.T("gv.type.color"), Loc.T("gv.type.font"), Loc.T("gv.type.list") };
 
         private void RebuildList()
         {
@@ -34,7 +35,7 @@ namespace Lumen.Ui
             {
                 List.Children.Add(new TextBlock
                 {
-                    Text = "（暂无变量，点击「新增变量」创建）",
+                    Text = Loc.T("gv.empty"),
                     Foreground = new SolidColorBrush(Color.FromRgb(0x88, 0x88, 0x88)),
                     FontSize = 11, Margin = new Thickness(0, 4, 0, 4)
                 });
@@ -143,7 +144,7 @@ namespace Lumen.Ui
                 {
                     MinWidth = 120,
                     Text = (tv.Raw as string) ?? "",
-                    ToolTip = "选项用 | 分隔，如 红|绿|蓝"
+                    ToolTip = Loc.T("gv.listHint")
                 };
                 optsTb.TextChanged += (s, e) =>
                 {
@@ -151,7 +152,7 @@ namespace Lumen.Ui
                     _onChanged?.Invoke();
                     if (selCb != null) FillSel(selCb, optsTb.Text, 0);
                 };
-                selCb = new ComboBox { Margin = new Thickness(6, 0, 0, 0), MinWidth = 80, ToolTip = "当前选中的选项" };
+                selCb = new ComboBox { Margin = new Thickness(6, 0, 0, 0), MinWidth = 80, ToolTip = Loc.T("gv.selHint") };
                 FillSel(selCb, tv.Raw as string, tv.SelectedIndex);
                 selCb.SelectionChanged += (s, e) =>
                 {

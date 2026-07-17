@@ -9,6 +9,7 @@ using System.Windows.Media.Animation;
 using Lumen.Actions;
 using Lumen.Core;
 using Lumen.Formula;
+using Lumen.I18n;
 using Lumen.Render;
 
 namespace Lumen.Atoms
@@ -145,15 +146,15 @@ namespace Lumen.Atoms
         /// <summary>部件级菜单的可编辑字段（基类含通用 透明度/旋转/锚点/偏移；子类按类型追加）。</summary>
         public virtual List<EditField> EditFields() => new()
         {
-            new EditField { Key = "anchor",  Label = "锚点",     Kind = EditKind.Choice, Category = FieldCategory.Layout, Choices = new[] { "TopLeft", "TopCenter", "TopRight", "MiddleLeft", "Center", "MiddleRight", "BottomLeft", "BottomCenter", "BottomRight" } },
-            new EditField { Key = "offsetX", Label = "X偏移(px)",Kind = EditKind.Number, Category = FieldCategory.Layout, Min = -9999, Max = 9999 },
-            new EditField { Key = "offsetY", Label = "Y偏移(px)",Kind = EditKind.Number, Category = FieldCategory.Layout, Min = -9999, Max = 9999 },
-            new EditField { Key = "opacity",  Label = "透明度",   Kind = EditKind.Slider, Category = FieldCategory.Layout, Min = 0, Max = 1 },
-            new EditField { Key = "rotation", Label = "旋转(°)", Kind = EditKind.Slider, Category = FieldCategory.Layout, Min = -180, Max = 180 },
-            new EditField { Key = "animEnter", Label = "进场动画", Kind = EditKind.Choice, Category = FieldCategory.Animation, Choices = new[] { "None", "Fade", "Slide", "Zoom", "Drop" } },
-            new EditField { Key = "animLoop",  Label = "循环动画", Kind = EditKind.Choice, Category = FieldCategory.Animation, Choices = new[] { "None", "Pulse", "Rotate", "Blink", "Float", "Bounce" } },
-            new EditField { Key = "animEnterDur", Label = "进场时长(ms)", Kind = EditKind.Number, Category = FieldCategory.Animation, Min = 0, Max = 10000 },
-            new EditField { Key = "animLoopDur",  Label = "循环时长(ms)", Kind = EditKind.Number, Category = FieldCategory.Animation, Min = 100, Max = 60000 },
+            new EditField { Key = "anchor",  Label = Loc.T("atom.label.anchor"),  Kind = EditKind.Choice, Category = FieldCategory.Layout, Choices = new[] { "TopLeft", "TopCenter", "TopRight", "MiddleLeft", "Center", "MiddleRight", "BottomLeft", "BottomCenter", "BottomRight" } },
+            new EditField { Key = "offsetX", Label = Loc.T("atom.label.offsetX"), Kind = EditKind.Number, Category = FieldCategory.Layout, Min = -9999, Max = 9999 },
+            new EditField { Key = "offsetY", Label = Loc.T("atom.label.offsetY"), Kind = EditKind.Number, Category = FieldCategory.Layout, Min = -9999, Max = 9999 },
+            new EditField { Key = "opacity",  Label = Loc.T("atom.label.opacity"),  Kind = EditKind.Slider, Category = FieldCategory.Layout, Min = 0, Max = 1 },
+            new EditField { Key = "rotation", Label = Loc.T("atom.label.rotation"), Kind = EditKind.Slider, Category = FieldCategory.Layout, Min = -180, Max = 180 },
+            new EditField { Key = "animEnter", Label = Loc.T("atom.label.animEnter"), Kind = EditKind.Choice, Category = FieldCategory.Animation, Choices = new[] { "None", "Fade", "Slide", "Zoom", "Drop" } },
+            new EditField { Key = "animLoop",  Label = Loc.T("atom.label.animLoop"),  Kind = EditKind.Choice, Category = FieldCategory.Animation, Choices = new[] { "None", "Pulse", "Rotate", "Blink", "Float", "Bounce" } },
+            new EditField { Key = "animEnterDur", Label = Loc.T("atom.label.animEnterDur"), Kind = EditKind.Number, Category = FieldCategory.Animation, Min = 0, Max = 10000 },
+            new EditField { Key = "animLoopDur",  Label = Loc.T("atom.label.animLoopDur"),  Kind = EditKind.Number, Category = FieldCategory.Animation, Min = 100, Max = 60000 },
         };
 
         public abstract UIElement Render();

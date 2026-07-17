@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Win32;
 using Lumen;
+using Lumen.I18n;
 using Lumen.Persistence;
 
 namespace Lumen.Ui
@@ -16,7 +17,12 @@ namespace Lumen.Ui
     {
         private LumenWindow _owner;
 
-        public ProfileWindow() { InitializeComponent(); }
+        public ProfileWindow()
+        {
+            InitializeComponent();
+            Loc.LangChanged += OnLangChanged;
+            Closing += (s, e) => Loc.LangChanged -= OnLangChanged;
+        }
 
         public void Init(LumenWindow owner)
         {
@@ -44,7 +50,7 @@ namespace Lumen.Ui
 
         private void BtnNew_Click(object sender, RoutedEventArgs e)
         {
-            var name = InputBox.Show(this, "新建配置档", "配置档名称：", "我的配置档");
+            var name = InputBox.Show(this, Loc.T("profile.newTitle"), Loc.T("profile.namePrompt"), Loc.T("profile.defaultName"));
             if (string.IsNullOrWhiteSpace(name)) return;
             _owner.NewProfile(name.Trim());
             Reload();
@@ -62,7 +68,7 @@ namespace Lumen.Ui
         {
             var old = SelectedName();
             if (string.IsNullOrWhiteSpace(old)) return;
-            var name = InputBox.Show(this, "重命名配置档", "新名称：", old);
+            var name = InputBox.Show(this, Loc.T("profile.renameTitle"), Loc.T("profile.newNamePrompt"), old);
             if (string.IsNullOrWhiteSpace(name)) return;
             _owner.RenameProfile(old, name.Trim());
             Reload();
@@ -72,7 +78,7 @@ namespace Lumen.Ui
         {
             var name = SelectedName();
             if (string.IsNullOrWhiteSpace(name)) return;
-            if (MessageBox.Show(this, $"确定删除配置档「{name}」？此操作不可撤销。", "删除配置档",
+            if (MessageBox.Show(this, Loc.T("profile.deleteConfirm", name), Loc.T("profile.deleteTitle"),
                 MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
             _owner.DeleteProfile(name);
             Reload();
@@ -84,29 +90,31 @@ namespace Lumen.Ui
             if (string.IsNullOrWhiteSpace(name)) return;
             var dlg = new SaveFileDialog
             {
-                Filter = "Lumen 配置档|*.json|所有文件|*.*",
+                Filter = Loc.T("dlg.profileExport.filter"),
                 FileName = name + ".lumenprofile",
-                Title = "导出配置档"
+                Title = Loc.T("profile.exportTitle")
             };
             if (dlg.ShowDialog() == true) ConfigStore.ExportProfile(name, dlg.FileName);
         }
 
         private void BtnImport_Click(object sender, RoutedEventArgs e)
         {
-            var dlg = new OpenFileDialog { Filter = "Lumen 配置档|*.json|所有文件|*.*", Title = "导入配置档" };
+            var dlg = new OpenFileDialog { Filter = Loc.T("dlg.profileExport.filter"), Title = Loc.T("profile.importTitle") };
             if (dlg.ShowDialog() != true) return;
             try
             {
                 var n = ConfigStore.ImportProfileFromFile(dlg.FileName, null);
                 Reload();
-                MessageBox.Show(this, $"已导入「{n}」。可在列表中切换使用。", "导入完成", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(this, Loc.T("profile.importDone", n), Loc.T("profile.importDoneTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "导入失败：" + ex.Message, "导入失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(this, Loc.T("profile.importFail") + ex.Message, Loc.T("profile.importFailTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
         private void BtnClose_Click(object sender, RoutedEventArgs e) => Close();
+
+        private void OnLangChanged(object sender, EventArgs e) => Reload();
     }
 }

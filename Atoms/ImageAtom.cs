@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using Lumen.Formula;
+using Lumen.I18n;
 
 namespace Lumen.Atoms
 {
@@ -75,10 +76,10 @@ namespace Lumen.Atoms
         public override List<EditField> EditFields()
         {
             var l = base.EditFields();
-            l.Add(new EditField { Key = "source",  Label = "图片路径", Kind = EditKind.File,   Hint = "本地图片文件" });
-            l.Add(new EditField { Key = "stretch", Label = "适应模式", Kind = EditKind.Choice, Choices = new[] { "None", "Uniform", "Fill", "UniformToFill" } });
-            l.Add(new EditField { Key = "radius", Label = "圆角(px)", Kind = EditKind.Slider, Min = 0, Max = 200 });
-            l.Add(new EditField { Key = "bg", Label = "占位背景", Kind = EditKind.Color });
+            l.Add(new EditField { Key = "source",  Label = Loc.T("atom.label.imageSource"), Kind = EditKind.File,   Hint = Loc.T("atom.hint.source") });
+            l.Add(new EditField { Key = "stretch", Label = Loc.T("atom.label.stretch"), Kind = EditKind.Choice, Choices = new[] { "None", "Uniform", "Fill", "UniformToFill" } });
+            l.Add(new EditField { Key = "radius", Label = Loc.T("atom.label.radius"), Kind = EditKind.Slider, Min = 0, Max = 200 });
+            l.Add(new EditField { Key = "bg", Label = Loc.T("atom.label.bgPlaceholder"), Kind = EditKind.Color });
             return l;
         }
     }

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Lumen.I18n;
 
 namespace Lumen.Ui
 {
@@ -14,32 +15,32 @@ namespace Lumen.Ui
         public static readonly List<FunctionCatalog> All = new()
         {
             // ---------- 时间 ----------
-            new() { Category = "时间", Name = "df",  Sig = "df(fmt)",            Desc = "当前时间，按 KLWP 风格格式，如 HH:mm / yyyy-MM-dd", Insert = "df(HH:mm)" },
-            new() { Category = "时间", Name = "tf",  Sig = "tf(secs)",           Desc = "秒数 → h:mm:ss 时长", Insert = "tf(125)" },
-            new() { Category = "时间", Name = "ts",  Sig = "ts([fmt])",          Desc = "时间戳(秒) 或按格式的时间", Insert = "ts(HH:mm:ss)" },
-            new() { Category = "时间", Name = "tu",  Sig = "tu()",               Desc = "UTC 时间串 yyyy-MM-dd HH:mm:ss", Insert = "tu()" },
-            new() { Category = "时间", Name = "tz",  Sig = "tz()",               Desc = "本地时区偏移（小时，如 +8）", Insert = "tz()" },
+            new() { Category = Loc.T("func.cat.time"),   Name = "df",  Sig = "df(fmt)",            Desc = Loc.T("func.df"), Insert = "df(HH:mm)" },
+            new() { Category = Loc.T("func.cat.time"),   Name = "tf",  Sig = "tf(secs)",           Desc = Loc.T("func.tf"), Insert = "tf(125)" },
+            new() { Category = Loc.T("func.cat.time"),   Name = "ts",  Sig = "ts([fmt])",          Desc = Loc.T("func.ts"), Insert = "ts(HH:mm:ss)" },
+            new() { Category = Loc.T("func.cat.time"),   Name = "tu",  Sig = "tu()",               Desc = Loc.T("func.tu"), Insert = "tu()" },
+            new() { Category = Loc.T("func.cat.time"),   Name = "tz",  Sig = "tz()",               Desc = Loc.T("func.tz"), Insert = "tz()" },
             // ---------- 系统 ----------
-            new() { Category = "系统", Name = "si",  Sig = "si(key)",            Desc = "系统指标(实时PDH)：cpu / mem / memused / memtotal / diskfree / disktotal / diskp / netup / netdown / rwidth / rheight / density / dark", Insert = "si(cpu)" },
-            new() { Category = "系统", Name = "bi",  Sig = "bi(key)",            Desc = "电池：level(电量%) / plugged(充电) / charging", Insert = "bi(level)" },
-            new() { Category = "系统", Name = "dp",  Sig = "dp(px)",             Desc = "DPI 缩放：px × 当前屏幕 DPI", Insert = "dp(100)" },
+            new() { Category = Loc.T("func.cat.system"), Name = "si",  Sig = "si(key)",            Desc = Loc.T("func.si"), Insert = "si(cpu)" },
+            new() { Category = Loc.T("func.cat.system"), Name = "bi",  Sig = "bi(key)",            Desc = Loc.T("func.bi"), Insert = "bi(level)" },
+            new() { Category = Loc.T("func.cat.system"), Name = "dp",  Sig = "dp(px)",             Desc = Loc.T("func.dp"), Insert = "dp(100)" },
             // ---------- 变量 ----------
-            new() { Category = "变量", Name = "gv",  Sig = "gv(name[, default])", Desc = "读取全局变量（不存在时取 default）", Insert = "gv(accent)" },
+            new() { Category = Loc.T("func.cat.var"),    Name = "gv",  Sig = "gv(name[, default])", Desc = Loc.T("func.gv"), Insert = "gv(accent)" },
             // ---------- 逻辑 ----------
-            new() { Category = "逻辑", Name = "if",  Sig = "if(cond,a,b)",       Desc = "条件：cond 为真取 a，否则取 b", Insert = "if(1>0, 高, 低)" },
+            new() { Category = Loc.T("func.cat.logic"),  Name = "if",  Sig = "if(cond,a,b)",       Desc = Loc.T("func.if"), Insert = "if(1>0, 高, 低)" },
             // ---------- 文本 ----------
-            new() { Category = "文本", Name = "tc",  Sig = "tc(cmd,text[,n])",   Desc = "文本处理：cut(n)/ell(n)/reg(pat,repl)/up/low/cap", Insert = "tc(ell, 文本, 10)" },
-            new() { Category = "文本", Name = "uc",  Sig = "uc(text)",           Desc = "转大写", Insert = "uc(hello)" },
-            new() { Category = "文本", Name = "re",  Sig = "re(text,pat,repl)",  Desc = "正则替换 text 中 pat 为 repl", Insert = "re(文本, \\d+, #)" },
+            new() { Category = Loc.T("func.cat.text"),   Name = "tc",  Sig = "tc(cmd,text[,n])",   Desc = Loc.T("func.tc"), Insert = "tc(ell, 文本, 10)" },
+            new() { Category = Loc.T("func.cat.text"),   Name = "uc",  Sig = "uc(text)",           Desc = Loc.T("func.uc"), Insert = "uc(hello)" },
+            new() { Category = Loc.T("func.cat.text"),   Name = "re",  Sig = "re(text,pat,repl)",  Desc = Loc.T("func.re"), Insert = "re(文本, \\d+, #)" },
             // ---------- 媒体 ----------
-            new() { Category = "媒体", Name = "mi",  Sig = "mi(key)",            Desc = "媒体信息(SMTC)：title / artist / album / app / playing / pos / dur / avail", Insert = "mi(title)" },
-            new() { Category = "媒体", Name = "mu",  Sig = "mu(cmd)",            Desc = "媒体控制：play / pause / next / prev / stop", Insert = "mu(play)" },
+            new() { Category = Loc.T("func.cat.media"),  Name = "mi",  Sig = "mi(key)",            Desc = Loc.T("func.mi"), Insert = "mi(title)" },
+            new() { Category = Loc.T("func.cat.media"),  Name = "mu",  Sig = "mu(cmd)",            Desc = Loc.T("func.mu"), Insert = "mu(play)" },
             // ---------- 应用 ----------
-            new() { Category = "应用", Name = "ai",  Sig = "ai([n])",            Desc = "应用：无参=应用数量；ai(n)=第 n 个应用名(1起)", Insert = "ai(1)" },
-            new() { Category = "应用", Name = "an",  Sig = "an(n)",              Desc = "启动第 n 个应用(1起)", Insert = "an(1)" },
+            new() { Category = Loc.T("func.cat.app"),    Name = "ai",  Sig = "ai([n])",            Desc = Loc.T("func.ai"), Insert = "ai(1)" },
+            new() { Category = Loc.T("func.cat.app"),    Name = "an",  Sig = "an(n)",              Desc = Loc.T("func.an"), Insert = "an(1)" },
             // ---------- 杂项 ----------
-            new() { Category = "杂项", Name = "fl",  Sig = "fl(idx,...)",        Desc = "取第 idx 个参数（idx 从 1 起）", Insert = "fl(2, a, b, c)" },
-            new() { Category = "杂项", Name = "rng", Sig = "rng([min,max])",     Desc = "随机小数（无参 0~1；两参 min~max）", Insert = "rng(0,100)" },
+            new() { Category = Loc.T("func.cat.misc"),   Name = "fl",  Sig = "fl(idx,...)",        Desc = Loc.T("func.fl"), Insert = "fl(2, a, b, c)" },
+            new() { Category = Loc.T("func.cat.misc"),   Name = "rng", Sig = "rng([min,max])",     Desc = Loc.T("func.rng"), Insert = "rng(0,100)" },
         };
     }
 }

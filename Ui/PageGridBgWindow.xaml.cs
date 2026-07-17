@@ -9,6 +9,7 @@ using Lumen.Core;
 using Lumen.Pages;
 using Lumen.Atoms;
 using Lumen.Formula;
+using Lumen.I18n;
 using Lumen.Presets;
 
 namespace Lumen.Ui
@@ -26,6 +27,8 @@ namespace Lumen.Ui
             InitGridSizes();
             // 色值变化即时更新色块（只绑一次）
             ColorTb.TextChanged += (s, e) => UpdateSwatch();
+            Loc.LangChanged += OnLangChanged;
+            Closing += (s, e) => Loc.LangChanged -= OnLangChanged;
         }
 
         public void Init(LumenWindow owner, PageManager mgr)
@@ -38,7 +41,7 @@ namespace Lumen.Ui
         private void InitGridSizes()
         {
             int[] sizes = { 20, 40, 60, 120 };
-            foreach (var s in sizes) GridSizeCb.Items.Add($"{s} px");
+            foreach (var s in sizes) GridSizeCb.Items.Add(Loc.T("pagebg.gridSizeItem", s));
         }
 
         private void ReloadAll()
@@ -243,7 +246,7 @@ namespace Lumen.Ui
             catch (Exception ex)
             {
                 FormulaPreviewSwatch.Visibility = Visibility.Collapsed;
-                FormulaPreviewText.Text = "✗ 公式错误：" + ex.Message.Split('\n')[0];
+                FormulaPreviewText.Text = Loc.T("pagebg.formulaError") + ex.Message.Split('\n')[0];
                 FormulaPreviewText.Visibility = Visibility.Visible;
             }
         }
@@ -261,8 +264,8 @@ namespace Lumen.Ui
             SceneList.Items.Clear();
             foreach (var p in PresetLibrary.User)
             {
-                var tag = p.Kind == PresetKind.Scene ? "场景" : "外观";
-                SceneList.Items.Add(new ListBoxItem { Content = $"{p.Name} [{tag}]", Tag = p.Name });
+                var tag = p.Kind == PresetKind.Scene ? Loc.T("pagebg.presetScene") : Loc.T("pagebg.presetLook");
+                SceneList.Items.Add(new ListBoxItem { Content = Loc.T("pagebg.presetItem", p.Name, tag), Tag = p.Name });
             }
             SyncSceneButtons();
         }
@@ -279,7 +282,7 @@ namespace Lumen.Ui
             var name = SceneNameTb.Text.Trim();
             if (string.IsNullOrWhiteSpace(name))
             {
-                MessageBox.Show(this, "请输入预设名称", "场景预设", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(this, Loc.T("pagebg.sceneNameEmpty"), Loc.T("pagebg.tab.scene"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             _owner.SaveCurrentAsScenePreset(name);
@@ -309,7 +312,7 @@ namespace Lumen.Ui
 
         private void Browse_Click(object sender, RoutedEventArgs e)
         {
-            var dlg = new OpenFileDialog { Filter = "图片文件|*.png;*.jpg;*.jpeg;*.bmp;*.gif|所有文件|*.*", Title = "选择背景图片" };
+            var dlg = new OpenFileDialog { Filter = Loc.T("dlg.bgImage.filter"), Title = Loc.T("dlg.bgImage.title") };
             if (dlg.ShowDialog() == true) ImageTb.Text = dlg.FileName;
         }
 
@@ -326,7 +329,7 @@ namespace Lumen.Ui
                 string imgSrc = ImageTb.Text.Trim();
                 if (!File.Exists(imgSrc))
                 {
-                    MessageBox.Show(this, "图片文件不存在", "背景", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show(this, Loc.T("pagebg.imgNotExist"), Loc.T("pagebg.tab.bg"), MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
                 _owner.ApplyBackground("image", imgSrc);
@@ -341,7 +344,7 @@ namespace Lumen.Ui
                         var raw = FormulaTb.Text.Trim();
                         if (string.IsNullOrWhiteSpace(raw))
                         {
-                            MessageBox.Show(this, "请输入公式", "背景", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            MessageBox.Show(this, Loc.T("pagebg.formulaEmpty"), Loc.T("pagebg.tab.bg"), MessageBoxButton.OK, MessageBoxImage.Warning);
                             return;
                         }
                         src = (raw.StartsWith("$") && raw.EndsWith("$")) ? raw : "$" + raw + "$";
@@ -352,7 +355,7 @@ namespace Lumen.Ui
                         var nm = BgGvCb.SelectedItem as string;
                         if (string.IsNullOrEmpty(nm))
                         {
-                            MessageBox.Show(this, "请选择全局变量", "背景", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            MessageBox.Show(this, Loc.T("pagebg.gvEmpty"), Loc.T("pagebg.tab.bg"), MessageBoxButton.OK, MessageBoxImage.Warning);
                             return;
                         }
                         src = "gv:" + nm;
@@ -367,6 +370,13 @@ namespace Lumen.Ui
 
         // ---------- 窗口 ----------
         private void CloseBtn_Click(object sender, RoutedEventArgs e) => Close();
+
+        private void OnLangChanged(object sender, EventArgs e)
+        {
+            GridSizeCb.Items.Clear();
+            InitGridSizes();
+            ReloadAll();
+        }
 
         private void Header_MouseDown(object sender, MouseButtonEventArgs e)
         {

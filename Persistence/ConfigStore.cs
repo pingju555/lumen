@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Windows;
 using Lumen.Atoms;
 using Lumen.Globals;
+using Lumen.I18n;
 using Lumen.Pages;
 using Lumen.Presets;
 using Lumen.Render;
@@ -272,8 +273,8 @@ namespace Lumen.Persistence
         }
 
         /// <summary>
-        /// 安装内置「使用手册」配置档：读取嵌入资源 Lumen.Resources.help_manual.json，
-        /// 写入 profiles/使用手册.json（每次覆盖以保持最新），并登记为激活档。
+        /// 安装内置「使用手册」配置档：读取嵌入资源（按当前语言选 zh-CN / en-GB 版），
+        /// 写入 profiles/&lt;文档名&gt;.json（每次覆盖以保持最新），并登记为激活档。
         /// 返回配置档名（失败返回 null）。
         /// </summary>
         public static string InstallBuiltinManual()
@@ -281,7 +282,10 @@ namespace Lumen.Persistence
             try
             {
                 var asm = typeof(ConfigStore).Assembly;
-                const string resName = "Lumen.Resources.help_manual.json";
+                // 按当前 UI 语言选对应手册版本（决策 ③-a：InstallBuiltinManual 按 lang 装对应语言版手册）
+                string resName = Loc.Cur.StartsWith("en", StringComparison.OrdinalIgnoreCase)
+                    ? "Lumen.Resources.help_manual.en-GB.json"
+                    : "Lumen.Resources.help_manual.json";
                 using var stream = asm.GetManifestResourceStream(resName);
                 if (stream == null)
                 {
@@ -310,11 +314,72 @@ namespace Lumen.Persistence
             }
         }
 
+        /// <summary>当前激活档是否为内置使用手册（任一语言版：使用手册 / User Manual）。</summary>
+        public static bool IsActiveProfileManual()
+        {
+            var active = ReadActive();
+            if (string.IsNullOrWhiteSpace(active)) return false;
+            return BuiltinManualDocNames().Contains(active);
+        }
+
+        /// <summary>返回两语言手册的文档名集合（用于判定激活档是否为手册，不含 IO 之外的副作用）。</summary>
+        private static HashSet<string> BuiltinManualDocNames()
+        {
+            var set = new HashSet<string>();
+            foreach (var res in new[] { "Lumen.Resources.help_manual.json", "Lumen.Resources.help_manual.en-GB.json" })
+            {
+                try
+                {
+                    var asm = typeof(ConfigStore).Assembly;
+                    using var s = asm.GetManifestResourceStream(res);
+                    if (s == null) continue;
+                    using var r = new StreamReader(s);
+                    var doc = JsonSerializer.Deserialize<Document>(r.ReadToEnd(), Opt);
+                    if (doc != null && !string.IsNullOrWhiteSpace(doc.Name)) set.Add(doc.Name);
+                }
+                catch { }
+            }
+            return set;
+        }
+
         internal static void SetActive(string name)
         {
-            try { Directory.CreateDirectory(Dir); File.WriteAllText(MetaPath, "{\"active\":" + JsonSerializer.Serialize(name) + "}"); }
-            catch (Exception ex) { Debug.WriteLine($"SetActive failed: {ex.Message}"); }
+            // 切换激活档时保留已持久化的语言选择
+            var (_, lang) = ReadMeta();
+            WriteMeta(name, lang);
         }
+
+        /// <summary>持久化当前 UI 语言（与激活档解耦，语言是全局设置）。</summary>
+        internal static void SetLang(string code) => WriteMeta(ReadActive(), code);
+
+        internal static string ReadLang() => ReadMeta().lang;
+
+        private static (string active, string lang) ReadMeta()
+        {
+            try
+            {
+                if (File.Exists(MetaPath))
+                {
+                    using var d = JsonDocument.Parse(File.ReadAllText(MetaPath));
+                    var active = d.RootElement.TryGetProperty("active", out var a) && a.ValueKind == JsonValueKind.String ? a.GetString() : "";
+                    var lang = d.RootElement.TryGetProperty("lang", out var l) && l.ValueKind == JsonValueKind.String ? l.GetString() : "";
+                    return (active, lang);
+                }
+            }
+            catch { }
+            return ("", "");
+        }
+
+        private static void WriteMeta(string active, string lang)
+        {
+            try
+            {
+                Directory.CreateDirectory(Dir);
+                File.WriteAllText(MetaPath, JsonSerializer.Serialize(new { active, lang }));
+            }
+            catch (Exception ex) { Debug.WriteLine($"WriteMeta failed: {ex.Message}"); }
+        }
+
         private static string ReadActive()
         {
             try

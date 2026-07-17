@@ -4,6 +4,7 @@ using System.Windows.Input;
 using Lumen.Atoms;
 using Lumen.Formula;
 using Lumen.Globals;
+using Lumen.I18n;
 
 namespace Lumen.Ui
 {
@@ -41,7 +42,7 @@ namespace Lumen.Ui
         public void LoadAtom(Atom atom)
         {
             _currentAtom = atom;
-            TitleTb.Text = $"编辑 {atom?.Type ?? "?"}";
+            TitleTb.Text = Loc.T("propwin.editing", atom?.Type ?? Loc.T("propwin.unknown"));
 
             // 隐藏占位、显示面板
             Placeholder.Visibility = atom == null ? Visibility.Visible : Visibility.Collapsed;

@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
 using Lumen.Formula;
+using Lumen.I18n;
 
 namespace Lumen.Atoms
 {
@@ -96,17 +97,17 @@ namespace Lumen.Atoms
         public override List<EditField> EditFields()
         {
             var l = base.EditFields();
-            l.Add(new EditField { Key = "text",  Label = "文本",   Kind = EditKind.Text,  Hint = "支持 $公式$ 与 gv:名称" });
-            l.Add(new EditField { Key = "color", Label = "颜色",   Kind = EditKind.Color });
-            l.Add(new EditField { Key = "size",  Label = "字号(px)", Kind = EditKind.Number, Min = 1, Max = 400 });
-            l.Add(new EditField { Key = "font", Label = "字体", Kind = EditKind.Choice, Choices = new[] { "Segoe UI", "Microsoft YaHei", "Microsoft YaHei UI", "Arial", "Consolas", "Times New Roman" } });
-            l.Add(new EditField { Key = "weight", Label = "字重", Kind = EditKind.Choice, Choices = new[] { "Thin", "Light", "Normal", "Bold", "ExtraBold" } });
-            l.Add(new EditField { Key = "align", Label = "水平对齐", Kind = EditKind.Choice, Choices = new[] { "Left", "Center", "Right", "Justify" } });
-            l.Add(new EditField { Key = "lineHeight", Label = "行距(px)", Kind = EditKind.Slider, Min = 0, Max = 48 });
-            l.Add(new EditField { Key = "wrap", Label = "自动换行", Kind = EditKind.Bool });
-            l.Add(new EditField { Key = "shadow", Label = "阴影", Kind = EditKind.Bool });
-            l.Add(new EditField { Key = "bg", Label = "背景色", Kind = EditKind.Color });
-            l.Add(new EditField { Key = "padding", Label = "内边距(px)", Kind = EditKind.Slider, Min = 0, Max = 40 });
+            l.Add(new EditField { Key = "text",  Label = Loc.T("atom.label.text"),   Kind = EditKind.Text,  Hint = Loc.T("atom.hint.text") });
+            l.Add(new EditField { Key = "color", Label = Loc.T("atom.label.color"),   Kind = EditKind.Color });
+            l.Add(new EditField { Key = "size",  Label = Loc.T("atom.label.fontSize"), Kind = EditKind.Number, Min = 1, Max = 400 });
+            l.Add(new EditField { Key = "font", Label = Loc.T("atom.label.font"), Kind = EditKind.Choice, Choices = new[] { "Segoe UI", "Microsoft YaHei", "Microsoft YaHei UI", "Arial", "Consolas", "Times New Roman" } });
+            l.Add(new EditField { Key = "weight", Label = Loc.T("atom.label.weight"), Kind = EditKind.Choice, Choices = new[] { "Thin", "Light", "Normal", "Bold", "ExtraBold" } });
+            l.Add(new EditField { Key = "align", Label = Loc.T("atom.label.align"), Kind = EditKind.Choice, Choices = new[] { "Left", "Center", "Right", "Justify" } });
+            l.Add(new EditField { Key = "lineHeight", Label = Loc.T("atom.label.lineHeight"), Kind = EditKind.Slider, Min = 0, Max = 48 });
+            l.Add(new EditField { Key = "wrap", Label = Loc.T("atom.label.wrap"), Kind = EditKind.Bool });
+            l.Add(new EditField { Key = "shadow", Label = Loc.T("atom.label.shadow"), Kind = EditKind.Bool });
+            l.Add(new EditField { Key = "bg", Label = Loc.T("atom.label.bgColor"), Kind = EditKind.Color });
+            l.Add(new EditField { Key = "padding", Label = Loc.T("atom.label.padding"), Kind = EditKind.Slider, Min = 0, Max = 40 });
             return l;
         }
     }

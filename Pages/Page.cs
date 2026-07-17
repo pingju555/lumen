@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Lumen.Atoms;
+using Lumen.I18n;
 using Lumen.Render;
 
 namespace Lumen.Pages
@@ -11,7 +12,7 @@ namespace Lumen.Pages
     /// </summary>
     public class Page
     {
-        public string Name { get; set; } = "页面";
+        public string Name { get; set; } = Loc.T("page.defaultName");
         public double GridSize { get; set; } = 40;
         public bool ShowGrid { get; set; } = true;
         public BackgroundRef Background { get; set; } = new BackgroundRef();

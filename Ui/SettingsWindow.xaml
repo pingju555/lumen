@@ -1,7 +1,8 @@
 <Window x:Class="Lumen.Ui.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="覆盖层设置" Height="460" Width="420" Topmost="True"
+        xmlns:loc="clr-namespace:Lumen.I18n"
+        Title="{loc:Loc settings.title}" Height="500" Width="420" Topmost="True"
         Background="#1E1E1E" Foreground="#E6E6E6"
         ResizeMode="NoResize" WindowStartupLocation="CenterScreen">
     <Window.Resources>
@@ -99,14 +100,21 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Text="桌面覆盖层 · 设置" FontSize="16" FontWeight="Bold" Margin="0,0,0,8"/>
+        <StackPanel Grid.Row="0">
+            <TextBlock x:Name="TxtTitle" Text="{loc:Loc settings.title}" FontSize="16" FontWeight="Bold" Margin="0,0,0,8"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                <TextBlock Text="{loc:Loc settings.language}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <ComboBox x:Name="CmbLang" Width="180" DisplayMemberPath="Name" SelectedValuePath="Code"
+                          SelectionChanged="CmbLang_SelectionChanged"/>
+            </StackPanel>
+        </StackPanel>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <StackPanel>
-                <CheckBox x:Name="ChkAutostart" Content="开机自启动" Margin="0,2"/>
-                <TextBlock Text="（HKCU\Run 注册表开关）" FontSize="10" Foreground="#777" Margin="18,0,0,0"/>
+                <CheckBox x:Name="ChkAutostart" Content="{loc:Loc settings.autostart}" Margin="0,2"/>
+                <TextBlock x:Name="TxtAutostartHint" Text="{loc:Loc settings.autostart.hint}" FontSize="10" Foreground="#777" Margin="18,0,0,0"/>
 
-                <TextBlock Text="网格间距" Margin="0,14,0,4" Foreground="#9A9A9A"/>
+                <TextBlock x:Name="TxtGrid" Text="{loc:Loc settings.gridSize}" Margin="0,14,0,4" Foreground="#9A9A9A"/>
                 <ComboBox x:Name="CmbGrid" Width="160" HorizontalAlignment="Left">
                     <ComboBoxItem Content="20 px"/>
                     <ComboBoxItem Content="40 px"/>
@@ -114,10 +122,10 @@
                     <ComboBoxItem Content="120 px"/>
                 </ComboBox>
 
-                <TextBlock Text="当前页背景" Margin="0,14,0,4" Foreground="#9A9A9A"/>
+                <TextBlock x:Name="TxtPageBg" Text="{loc:Loc settings.pageBg}" Margin="0,14,0,4" Foreground="#9A9A9A"/>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                    <RadioButton x:Name="RbSolid" Content="纯色" GroupName="Bg" IsChecked="True" Margin="0,0,12,0"/>
-                    <RadioButton x:Name="RbImage" Content="图片" GroupName="Bg"/>
+                    <RadioButton x:Name="RbSolid" Content="{loc:Loc settings.bg.solid}" GroupName="Bg" IsChecked="True" Margin="0,0,12,0"/>
+                    <RadioButton x:Name="RbImage" Content="{loc:Loc settings.bg.image}" GroupName="Bg"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal">
                     <TextBox x:Name="TxtBgSolid" Width="120" Text="#FF1E1E1E" Background="#2D2D30" Foreground="#E6E6E6" BorderBrush="#3F3F46"/>
@@ -125,25 +133,25 @@
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                     <TextBox x:Name="TxtBgImage" Width="220" IsEnabled="False" Background="#2D2D30" Foreground="#E6E6E6" BorderBrush="#3F3F46"/>
-                    <Button x:Name="BtnBrowseBg" Content="浏览" Width="60" Margin="6,0,0,0" IsEnabled="False"/>
+                    <Button x:Name="BtnBrowseBg" Content="{loc:Loc settings.browse}" Width="60" Margin="6,0,0,0" IsEnabled="False"/>
                 </StackPanel>
-                <Button x:Name="BtnApplyBg" Content="应用背景" Width="100" Margin="0,6,0,0" HorizontalAlignment="Left"/>
+                <Button x:Name="BtnApplyBg" Content="{loc:Loc settings.applyBg}" Width="100" Margin="0,6,0,0" HorizontalAlignment="Left"/>
 
-                <TextBlock Text="覆盖层显隐" Margin="0,14,0,4" Foreground="#9A9A9A"/>
+                <TextBlock x:Name="TxtVisibility" Text="{loc:Loc settings.visibility}" Margin="0,14,0,4" Foreground="#9A9A9A"/>
                 <Button x:Name="BtnToggle" Content="隐藏覆盖层" Width="120" HorizontalAlignment="Left"/>
-                <TextBlock x:Name="TxtHotkey" Text="快捷键：Ctrl+Alt+H" Margin="0,4,0,0" Foreground="#9A9A9A" FontSize="11"/>
+                <TextBlock x:Name="TxtHotkey" Text="{loc:Loc settings.hotkey}" Margin="0,4,0,0" Foreground="#9A9A9A" FontSize="11"/>
 
-                <TextBlock Text="配置档导入 / 导出" Margin="0,14,0,4" Foreground="#9A9A9A"/>
+                <TextBlock x:Name="TxtProfileIo" Text="{loc:Loc settings.profileIo}" Margin="0,14,0,4" Foreground="#9A9A9A"/>
                 <StackPanel Orientation="Horizontal">
-                    <Button x:Name="BtnExport" Content="导出配置档" Width="100"/>
-                    <Button x:Name="BtnImport" Content="导入配置档" Width="100" Margin="6,0,0,0"/>
+                    <Button x:Name="BtnExport" Content="{loc:Loc settings.export}" Width="100"/>
+                    <Button x:Name="BtnImport" Content="{loc:Loc settings.import}" Width="100" Margin="6,0,0,0"/>
                 </StackPanel>
 
-                <TextBlock Text="多屏" Margin="0,14,0,4" Foreground="#9A9A9A"/>
-                <TextBlock Text="多屏支持将在 v2 提供。" FontSize="11" Foreground="#777"/>
+                <TextBlock x:Name="TxtMulti" Text="{loc:Loc settings.multi}" Margin="0,14,0,4" Foreground="#9A9A9A"/>
+                <TextBlock x:Name="TxtMultiTip" Text="{loc:Loc settings.multi.tip}" FontSize="11" Foreground="#777"/>
             </StackPanel>
         </ScrollViewer>
 
-        <Button Grid.Row="2" x:Name="BtnClose" Content="关闭" Width="80" HorizontalAlignment="Right" Margin="0,12,0,0"/>
+        <Button Grid.Row="2" x:Name="BtnClose" Content="{loc:Loc settings.close}" Width="80" HorizontalAlignment="Right" Margin="0,12,0,0"/>
     </Grid>
 </Window>

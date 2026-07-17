@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using Lumen.I18n;
 
 namespace Lumen.Ui
 {
@@ -54,8 +55,8 @@ namespace Lumen.Ui
                 HorizontalAlignment = HorizontalAlignment.Right,
                 Margin = new Thickness(0, 12, 0, 0)
             };
-            var ok = new Button { Content = "确定", Width = 72, Margin = new Thickness(0, 0, 8, 0), Padding = new Thickness(0, 4, 0, 4) };
-            var cancel = new Button { Content = "取消", Width = 72, Padding = new Thickness(0, 4, 0, 4) };
+            var ok = new Button { Content = Loc.T("input.ok"), Width = 72, Margin = new Thickness(0, 0, 8, 0), Padding = new Thickness(0, 4, 0, 4) };
+            var cancel = new Button { Content = Loc.T("input.cancel"), Width = 72, Padding = new Thickness(0, 4, 0, 4) };
             ok.Click += (s, e) => { DialogResult = true; };
             cancel.Click += (s, e) => { DialogResult = false; };
             _tb.KeyDown += (s, e) =>

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using Lumen.I18n;
 
 namespace Lumen.Pages
 {
@@ -45,7 +46,7 @@ namespace Lumen.Pages
         public bool Add(string name)
         {
             if (Pages.Count >= MaxPages) return false;
-            Pages.Add(new Page { Name = name ?? $"页面{Pages.Count + 1}", GridSize = 40, ShowGrid = true });
+            Pages.Add(new Page { Name = name ?? Loc.T("page.newName", Pages.Count + 1), GridSize = 40, ShowGrid = true });
             Current = Pages.Count - 1;
             return true;
         }

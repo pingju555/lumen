@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using Lumen.I18n;
 
 namespace Lumen.Ui
 {
@@ -63,7 +64,7 @@ namespace Lumen.Ui
             public bool IsFolder;
             public string Name => IsFolder ? System.IO.Path.GetFileName(FullPath.TrimEnd('\\')) : System.IO.Path.GetFileName(FullPath);
             public string Glyph => IsFolder ? "📁" : "📄";
-            public string Type => IsFolder ? "文件夹" : (System.IO.Path.GetExtension(FullPath).ToUpper().TrimStart('.') + " 文件");
+            public string Type => IsFolder ? Loc.T("file.folder") : Loc.T("file.fileType", System.IO.Path.GetExtension(FullPath).ToUpper().TrimStart('.'));
             public string SizeText
             {
                 get
@@ -89,7 +90,7 @@ namespace Lumen.Ui
 
         public FilePickerWindow(string filter, string initialPath)
         {
-            Title = "选择文件";
+            Title = Loc.T("file.title");
             Width = 660; Height = 480;
             WindowStartupLocation = WindowStartupLocation.CenterOwner;
             Background = new SolidColorBrush(Color.FromRgb(0x1E, 0x1E, 0x1E));
@@ -146,7 +147,7 @@ namespace Lumen.Ui
         {
             var bar = new DockPanel { LastChildFill = true, Margin = new Thickness(8, 8, 8, 4) };
 
-            var back = new Button { Content = "↑ 上级", Padding = new Thickness(8, 2, 8, 2), Margin = new Thickness(0, 0, 4, 0) };
+            var back = new Button { Content = Loc.T("file.up"), Padding = new Thickness(8, 2, 8, 2), Margin = new Thickness(0, 0, 4, 0) };
             back.Click += (s, e) =>
             {
                 try { var p = Directory.GetParent(_currentDir); if (p != null) Navigate(p.FullName); }
@@ -156,7 +157,7 @@ namespace Lumen.Ui
             bar.Children.Add(back);
 
             _placesCb = new ComboBox { Width = 170, Margin = new Thickness(0, 0, 4, 0), IsEditable = false };
-            _placesCb.Items.Add("快速访问");
+            _placesCb.Items.Add(Loc.T("file.quickAccess"));
             try
             {
                 foreach (var sf in new[] { Environment.SpecialFolder.Desktop, Environment.SpecialFolder.MyDocuments, Environment.SpecialFolder.MyPictures, Environment.SpecialFolder.UserProfile })
@@ -171,7 +172,7 @@ namespace Lumen.Ui
             _placesCb.SelectedIndex = 0;
             _placesCb.SelectionChanged += (s, e) =>
             {
-                if (_placesCb.SelectedItem is string sel && sel != "快速访问" && Directory.Exists(sel)) Navigate(sel);
+                if (_placesCb.SelectedIndex > 0 && _placesCb.SelectedItem is string sel && Directory.Exists(sel)) Navigate(sel);
             };
             DockPanel.SetDock(_placesCb, Dock.Left);
             bar.Children.Add(_placesCb);
@@ -203,9 +204,9 @@ namespace Lumen.Ui
 
             _list = new ListView { Background = new SolidColorBrush(Color.FromRgb(0x14, 0x14, 0x14)), Foreground = new SolidColorBrush(Colors.White) };
             var gv = new GridView();
-            gv.Columns.Add(new GridViewColumn { Header = "名称", DisplayMemberBinding = new System.Windows.Data.Binding("Name"), Width = 230 });
-            gv.Columns.Add(new GridViewColumn { Header = "类型", DisplayMemberBinding = new System.Windows.Data.Binding("Type"), Width = 80 });
-            gv.Columns.Add(new GridViewColumn { Header = "大小", DisplayMemberBinding = new System.Windows.Data.Binding("SizeText"), Width = 70 });
+            gv.Columns.Add(new GridViewColumn { Header = Loc.T("file.colName"), DisplayMemberBinding = new System.Windows.Data.Binding("Name"), Width = 230 });
+            gv.Columns.Add(new GridViewColumn { Header = Loc.T("file.colType"), DisplayMemberBinding = new System.Windows.Data.Binding("Type"), Width = 80 });
+            gv.Columns.Add(new GridViewColumn { Header = Loc.T("file.colSize"), DisplayMemberBinding = new System.Windows.Data.Binding("SizeText"), Width = 70 });
             _list.View = gv;
             _list.SelectionChanged += (s, e) => ShowPreview(_list.SelectedItem as FileItem);
             _list.MouseDoubleClick += (s, e) =>
@@ -238,7 +239,7 @@ namespace Lumen.Ui
             DockPanel.SetDock(_filterCb, Dock.Left);
             bar.Children.Add(_filterCb);
 
-            var ok = new Button { Content = "选择", Width = 90, Padding = new Thickness(0, 3, 0, 3), Margin = new Thickness(0, 0, 6, 0) };
+            var ok = new Button { Content = Loc.T("file.select"), Width = 90, Padding = new Thickness(0, 3, 0, 3), Margin = new Thickness(0, 0, 6, 0) };
             ok.Click += (s, e) =>
             {
                 if (_list.SelectedItem is FileItem it && !it.IsFolder) { _selectedPath = it.FullPath; DialogResult = true; }
@@ -247,7 +248,7 @@ namespace Lumen.Ui
             DockPanel.SetDock(ok, Dock.Right);
             bar.Children.Add(ok);
 
-            var cancel = new Button { Content = "取消", Width = 90, Padding = new Thickness(0, 3, 0, 3) };
+            var cancel = new Button { Content = Loc.T("file.cancel"), Width = 90, Padding = new Thickness(0, 3, 0, 3) };
             cancel.Click += (s, e) => { DialogResult = false; Close(); };
             DockPanel.SetDock(cancel, Dock.Right);
             bar.Children.Add(cancel);
@@ -276,7 +277,7 @@ namespace Lumen.Ui
             }
             catch (Exception ex)
             {
-                ShowPreviewMessage("无法访问该目录：\n" + ex.Message);
+                ShowPreviewMessage(Loc.T("file.dirAccessFail") + ex.Message);
             }
         }
 
@@ -296,11 +297,11 @@ namespace Lumen.Ui
         private void ShowPreview(FileItem it)
         {
             _preview.Children.Clear();
-            if (it == null) { _preview.Children.Add(new TextBlock { Text = "（未选择）", Foreground = new SolidColorBrush(Color.FromRgb(0x88, 0x88, 0x88)), Margin = new Thickness(10) }); return; }
+                if (it == null) { _preview.Children.Add(new TextBlock { Text = Loc.T("file.noneSelected"), Foreground = new SolidColorBrush(Color.FromRgb(0x88, 0x88, 0x88)), Margin = new Thickness(10) }); return; }
             if (it.IsFolder)
             {
                 var (icon, type, disp) = GetFileInfo(it.FullPath, true);
-                AddPreviewRow(icon, disp, "文件夹", "", it.FullPath);
+                AddPreviewRow(icon, disp, Loc.T("file.folder"), "", it.FullPath);
                 return;
             }
             try
@@ -329,7 +330,7 @@ namespace Lumen.Ui
             }
             catch (Exception ex)
             {
-                ShowPreviewMessage("无法预览：\n" + ex.Message);
+                ShowPreviewMessage(Loc.T("file.previewFail") + ex.Message);
             }
         }
 
@@ -347,9 +348,9 @@ namespace Lumen.Ui
                 FontWeight = FontWeights.Bold
             });
             _preview.Children.Add(head);
-            _preview.Children.Add(new TextBlock { Text = "类型：" + type, Foreground = new SolidColorBrush(Color.FromRgb(0xC0, 0xC0, 0xC0)), Margin = new Thickness(10, 0, 10, 0), TextWrapping = TextWrapping.Wrap });
+            _preview.Children.Add(new TextBlock { Text = Loc.T("file.typeLabel") + type, Foreground = new SolidColorBrush(Color.FromRgb(0xC0, 0xC0, 0xC0)), Margin = new Thickness(10, 0, 10, 0), TextWrapping = TextWrapping.Wrap });
             if (!string.IsNullOrEmpty(size))
-                _preview.Children.Add(new TextBlock { Text = "大小：" + size, Foreground = new SolidColorBrush(Color.FromRgb(0xC0, 0xC0, 0xC0)), Margin = new Thickness(10, 2, 10, 0) });
+                _preview.Children.Add(new TextBlock { Text = Loc.T("file.sizeLabel") + size, Foreground = new SolidColorBrush(Color.FromRgb(0xC0, 0xC0, 0xC0)), Margin = new Thickness(10, 2, 10, 0) });
             _preview.Children.Add(new TextBlock { Text = fullPath, Foreground = new SolidColorBrush(Color.FromRgb(0x80, 0x80, 0x80)), Margin = new Thickness(10, 6, 10, 0), FontSize = 10, TextWrapping = TextWrapping.Wrap });
         }
 
@@ -364,7 +365,7 @@ namespace Lumen.Ui
         {
             if (string.IsNullOrWhiteSpace(filter))
             {
-                _filters.Add(("所有文件", new List<string> { "*" }, true));
+                _filters.Add((Loc.T("file.allFiles"), new List<string> { "*" }, true));
                 return;
             }
             var parts = filter.Split('|');
@@ -380,7 +381,7 @@ namespace Lumen.Ui
                     .ToList();
                 _filters.Add((label, exts, all));
             }
-            if (_filters.Count == 0) _filters.Add(("所有文件", new List<string> { "*" }, true));
+            if (_filters.Count == 0) _filters.Add((Loc.T("file.allFiles"), new List<string> { "*" }, true));
         }
 
         private (bool all, List<string> exts) CurrentPatterns()

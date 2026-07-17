@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using Lumen.Formula;
+using Lumen.I18n;
 
 namespace Lumen.Atoms
 {
@@ -142,12 +143,12 @@ namespace Lumen.Atoms
         public override List<EditField> EditFields()
         {
             var l = base.EditFields();
-            l.Add(new EditField { Key = "value", Label = "数值",     Kind = EditKind.Text,   Hint = "0-100，支持 $公式$ / gv:名称，如 $bi(level)$" });
-            l.Add(new EditField { Key = "kind",  Label = "样式",     Kind = EditKind.Choice, Choices = new[] { "Bar", "Ring" } });
-            l.Add(new EditField { Key = "color", Label = "颜色",     Kind = EditKind.Color });
-            l.Add(new EditField { Key = "bg", Label = "背景色", Kind = EditKind.Color });
-            l.Add(new EditField { Key = "thickness", Label = "厚度(px)", Kind = EditKind.Slider, Min = 0, Max = 60 });
-            l.Add(new EditField { Key = "showText", Label = "显示百分比", Kind = EditKind.Bool });
+            l.Add(new EditField { Key = "value", Label = Loc.T("atom.label.value"),     Kind = EditKind.Text,   Hint = Loc.T("atom.hint.value") });
+            l.Add(new EditField { Key = "kind",  Label = Loc.T("atom.label.progressKind"),     Kind = EditKind.Choice, Choices = new[] { "Bar", "Ring" } });
+            l.Add(new EditField { Key = "color", Label = Loc.T("atom.label.color"),     Kind = EditKind.Color });
+            l.Add(new EditField { Key = "bg", Label = Loc.T("atom.label.bgColor"), Kind = EditKind.Color });
+            l.Add(new EditField { Key = "thickness", Label = Loc.T("atom.label.thickness"), Kind = EditKind.Slider, Min = 0, Max = 60 });
+            l.Add(new EditField { Key = "showText", Label = Loc.T("atom.label.showText"), Kind = EditKind.Bool });
             return l;
         }
     }

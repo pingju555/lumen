@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
 using Lumen.Formula;
+using Lumen.I18n;
 
 namespace Lumen.Atoms
 {
@@ -100,12 +101,12 @@ namespace Lumen.Atoms
         public override List<EditField> EditFields()
         {
             var l = base.EditFields();
-            l.Add(new EditField { Key = "glyph", Label = "字形码点", Kind = EditKind.Text,  Hint = "十六进制码点，如 E974（同步图标）" });
-            l.Add(new EditField { Key = "font",  Label = "字体",     Kind = EditKind.Choice, Choices = new[] { "Segoe MDL2 Assets", "Segoe UI Symbol", "Segoe UI Emoji", "Arial" } });
-            l.Add(new EditField { Key = "size",  Label = "字号(px)", Kind = EditKind.Number, Min = 1, Max = 400 });
-            l.Add(new EditField { Key = "color", Label = "颜色",     Kind = EditKind.Color });
-            l.Add(new EditField { Key = "bg", Label = "背景圆", Kind = EditKind.Color });
-            l.Add(new EditField { Key = "shadow", Label = "阴影", Kind = EditKind.Bool });
+            l.Add(new EditField { Key = "glyph", Label = Loc.T("atom.label.glyph"), Kind = EditKind.Text,  Hint = Loc.T("atom.hint.glyph") });
+            l.Add(new EditField { Key = "font",  Label = Loc.T("atom.label.font"),     Kind = EditKind.Choice, Choices = new[] { "Segoe MDL2 Assets", "Segoe UI Symbol", "Segoe UI Emoji", "Arial" } });
+            l.Add(new EditField { Key = "size",  Label = Loc.T("atom.label.fontSize"), Kind = EditKind.Number, Min = 1, Max = 400 });
+            l.Add(new EditField { Key = "color", Label = Loc.T("atom.label.color"),     Kind = EditKind.Color });
+            l.Add(new EditField { Key = "bg", Label = Loc.T("atom.label.bgCircle"), Kind = EditKind.Color });
+            l.Add(new EditField { Key = "shadow", Label = Loc.T("atom.label.shadow"), Kind = EditKind.Bool });
             return l;
         }
     }

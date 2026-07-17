@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using Lumen.I18n;
 
 namespace Lumen.Ui
 {
@@ -29,7 +30,7 @@ namespace Lumen.Ui
 
         public ColorPickerWindow()
         {
-            Title = "取色器";
+            Title = Loc.T("color.title");
             Width = 320; Height = 460;
             WindowStartupLocation = WindowStartupLocation.CenterOwner;
             Background = new SolidColorBrush(Color.FromRgb(0x1E, 0x1E, 0x1E));
@@ -62,7 +63,7 @@ namespace Lumen.Ui
                 CornerRadius = new CornerRadius(4, 4, 0, 0)
             };
             titleBar.MouseLeftButtonDown += (s, e) => { if (e.ChangedButton == MouseButton.Left) DragMove(); };
-            titleBar.Child = new TextBlock { Text = "取色器", FontSize = 13, FontWeight = FontWeights.Bold, Foreground = new SolidColorBrush(Colors.White) };
+            titleBar.Child = new TextBlock { Text = Loc.T("color.title"), FontSize = 13, FontWeight = FontWeights.Bold, Foreground = new SolidColorBrush(Colors.White) };
             root.Children.Add(titleBar);
 
             // SV 色盘（Grid 叠 3 层渐变 + 顶层 Canvas 鼠标拾取 + 光标）
@@ -164,9 +165,9 @@ namespace Lumen.Ui
 
             // OK / Cancel
             var btnRow = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 8, 0, 0) };
-            var ok = new Button { Content = "确定", Width = 70, Margin = new Thickness(0, 0, 6, 0) };
+            var ok = new Button { Content = Loc.T("common.ok"), Width = 70, Margin = new Thickness(0, 0, 6, 0) };
             ok.Click += (s, e) => { DialogResult = true; Close(); };
-            var cancel = new Button { Content = "取消", Width = 70 };
+            var cancel = new Button { Content = Loc.T("common.cancel"), Width = 70 };
             cancel.Click += (s, e) => { DialogResult = false; Close(); };
             btnRow.Children.Add(ok); btnRow.Children.Add(cancel);
             root.Children.Add(btnRow);

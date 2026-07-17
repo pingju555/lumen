@@ -21,8 +21,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- 内置使用手册种子档：嵌入程序集，资源名 Lumen.Resources.help_manual.json -->
+    <!-- 语言包：随程序目录发布；用户/社区可在 %LocalAppData%/Lumen/lang 覆盖 -->
+    <Content Include="lang\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 内置使用手册种子档（多语言）：嵌入程序集，资源名 Lumen.Resources.help_manual(.en-GB).json -->
     <EmbeddedResource Include="Resources\help_manual.json" />
+    <EmbeddedResource Include="Resources\help_manual.en-GB.json" />
   </ItemGroup>
 
 </Project>

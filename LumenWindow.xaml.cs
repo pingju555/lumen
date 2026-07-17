@@ -24,6 +24,7 @@ using Lumen.Persistence;
 using Lumen.Presets;
 using Lumen.Render;
 using Lumen.Ui;
+using Lumen.I18n;
 
 namespace Lumen
 {
@@ -87,6 +88,7 @@ namespace Lumen
             SourceInitialized += OnSourceInitialized;
             Loaded += OnLoaded;
             Closing += OnClosing;
+            Loc.LangChanged += OnLangChanged;
             Activated += (s, e) => _scheduler?.SetFocused(true);
             Deactivated += (s, e) => _scheduler?.SetFocused(false);
         }
@@ -124,6 +126,7 @@ namespace Lumen
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
+            Title = Loc.T("main.title");
             ApplyFullscreenWorkArea();
             NativeWindow.InsertAboveDesktop(_hwnd);
 
@@ -192,7 +195,7 @@ namespace Lumen
         /// <summary>首次运行：播种默认工程——「主页」(GridWorkspace+时钟小组件+散落原子) 与「画布」(CanvasFree)。</summary>
         private void SeedDefaultProject()
         {
-            _pages.Add("主页");
+            _pages.Add(Loc.T("main.homePage"));
             PresetLibrary.Apply(PresetLibrary.GetBuiltin("GridWorkspace"), _pages.CurrentPage);
             var home = _pages.CurrentPage;
             home.Atoms.Add(new TextAtom { TextProp = new FormulaValue("电量 $bi(level)$%"), Bounds = new Rect(120, 120, 320, 40) });
@@ -200,7 +203,7 @@ namespace Lumen
             home.Atoms.Add(new ShapeAtom { KindProp = new StaticValue("RoundRect"), FillProp = new StaticValue("#FF4488FF"), Bounds = new Rect(120, 220, 160, 120) });
             home.Atoms.Add(new IconAtom { Bounds = new Rect(120, 360, 80, 80) });
 
-            _pages.Add("画布");
+            _pages.Add(Loc.T("main.canvasPage"));
             PresetLibrary.Apply(PresetLibrary.GetBuiltin("CanvasFree"), _pages.CurrentPage);
             _pages.Select(0);
         }
@@ -329,7 +332,7 @@ namespace Lumen
         {
             var page = _pages.CurrentPage;
             if (page == null) return;
-            StatusHud.Text = $"页: {page.Name}  ·  网格: {page.GridSize}px  ·  原子: {page.AllAtoms().Count()}";
+            StatusHud.Text = Loc.T("main.status", page.Name, page.GridSize, page.AllAtoms().Count());
         }
 
         // ---------- 操作：添加原子 ----------
@@ -402,45 +405,38 @@ namespace Lumen
         {
             _menu = new ContextMenu();
             _menu.Opened += (s, e) => RefreshMenu();
-
-            _mnuToggleMode = new MenuItem { Header = "进入编辑模式" };
-            _mnuToggleMode.Click += (s, e) => SetEditMode(!_editMode);
-
-            _mnuPageGridBg = new MenuItem { Header = "设置…" };
-            _mnuPageGridBg.Click += (s, e) => OpenPageGridBgWindow();
-
-            _mnuProfile = new MenuItem { Header = "配置档…" };
-            _mnuProfile.Click += (s, e) => OpenProfileWindow();
-
-            _mnuPresets = new MenuItem { Header = "套用预设" };
-
-            _mnuGv = new MenuItem { Header = "变量…" };
-            _mnuGv.Click += (s, e) => ManageVariables();
-
-            _mnuTree = new MenuItem { Header = "部件树…" };
-            _mnuTree.Click += (s, e) => ShowEditorWindows();
-
-            var exit = new MenuItem { Header = "退出", InputGestureText = "Ctrl+Alt+Q" };
-            exit.Click += (s, e) => Application.Current.Shutdown();
-
-            _mnuSep = new Separator();
-
-            _menu.Items.Add(_mnuToggleMode);
-            _menu.Items.Add(_mnuPageGridBg);
-            _menu.Items.Add(_mnuProfile);
-            _menu.Items.Add(_mnuPresets);
-            _menu.Items.Add(_mnuGv);
-            _menu.Items.Add(_mnuTree);
-            _menu.Items.Add(_mnuSep);
-            _menu.Items.Add(exit);
-
+            foreach (var it in MakeGlobalItems(out _mnuToggleMode, out _mnuPageGridBg, out _mnuProfile, out _mnuPresets, out _mnuGv, out _mnuTree, out _, out _mnuSep))
+                _menu.Items.Add(it);
             RootGrid.ContextMenu = _menu;
+        }
+
+        /// <summary>生成一份全新的全局菜单项（空白区菜单与部件菜单共用同一套功能）。
+        /// 每次调用都新建实例，因此可分别挂到 _menu 与部件右键菜单（WPF 的 MenuItem 不能同时属于两个父级）。</summary>
+        private UIElement[] MakeGlobalItems(
+            out MenuItem toggleMode, out MenuItem pageGridBg, out MenuItem profile,
+            out MenuItem presets, out MenuItem gv, out MenuItem tree, out MenuItem exit, out Separator sep)
+        {
+            toggleMode = new MenuItem { Header = Loc.T("menu.editMode") };
+            toggleMode.Click += (s, e) => SetEditMode(!_editMode);
+            pageGridBg = new MenuItem { Header = Loc.T("menu.settings") };
+            pageGridBg.Click += (s, e) => OpenPageGridBgWindow();
+            profile = new MenuItem { Header = Loc.T("menu.profile") };
+            profile.Click += (s, e) => OpenProfileWindow();
+            presets = new MenuItem { Header = Loc.T("menu.applyPreset") };
+            gv = new MenuItem { Header = Loc.T("menu.variables") };
+            gv.Click += (s, e) => ManageVariables();
+            tree = new MenuItem { Header = Loc.T("menu.atomTree") };
+            tree.Click += (s, e) => ShowEditorWindows();
+            exit = new MenuItem { Header = Loc.T("menu.exit"), InputGestureText = "Ctrl+Alt+Q" };
+            exit.Click += (s, e) => Application.Current.Shutdown();
+            sep = new Separator();
+            return new UIElement[] { toggleMode, pageGridBg, profile, presets, gv, tree, sep, exit };
         }
 
         /// <summary>菜单每次打开时刷新：模式切换项文案 + 编辑态专属项显隐 + 动态列表。</summary>
         private void RefreshMenu()
         {
-            _mnuToggleMode.Header = _editMode ? "进入桌面模式" : "进入编辑模式";
+            _mnuToggleMode.Header = _editMode ? Loc.T("menu.desktopMode") : Loc.T("menu.editMode");
             var editOnly = _editMode ? Visibility.Visible : Visibility.Collapsed;
             _mnuPageGridBg.Visibility = editOnly;
             _mnuPresets.Visibility = editOnly;
@@ -451,27 +447,36 @@ namespace Lumen
             if (!_editMode) return; // 桌面模式无需构建动态项
 
             // 预设：内置 + 用户自定义（标注种类）
-            _mnuPresets.Items.Clear();
+            PopulatePresets(_mnuPresets);
+        }
+
+        /// <summary>填充「套用预设」子菜单（内置 + 用户，标注种类 + 另存场景）。空白区菜单与部件菜单共用。</summary>
+        private void PopulatePresets(MenuItem presets)
+        {
+            presets.Items.Clear();
             foreach (var p in PresetLibrary.Builtins)
             {
-                var name = p.Name;
-                var tag = p.Kind == PresetKind.Scene ? "（场景）" : "（外观）";
-                var mi = new MenuItem { Header = name + tag };
-                mi.Click += (s, e) => ApplyPresetByName(name);
-                _mnuPresets.Items.Add(mi);
+                // 显示本地化预设名，但套用仍按规范 Name（SwitchPreset 动作里写死的 Day/Night 等不受影响）
+                var key = "preset." + p.Name.ToLower();
+                var disp = Loc.T(key);
+                if (disp == key) disp = p.Name; // 无对应翻译则回退规范名
+                var tag = p.Kind == PresetKind.Scene ? Loc.T("menu.presetScene") : Loc.T("menu.presetAppearance");
+                var mi = new MenuItem { Header = disp + tag };
+                mi.Click += (s, e) => ApplyPresetByName(p.Name);
+                presets.Items.Add(mi);
             }
             foreach (var p in PresetLibrary.User)
             {
                 var name = p.Name;
-                var tag = p.Kind == PresetKind.Scene ? "（场景）" : "（外观）";
-                var mi = new MenuItem { Header = $"{name}（自定义）{tag}" };
+                var tag = p.Kind == PresetKind.Scene ? Loc.T("menu.presetScene") : Loc.T("menu.presetAppearance");
+                var mi = new MenuItem { Header = name + Loc.T("menu.presetCustom") + tag };
                 mi.Click += (s, e) => ApplyPresetByName(name);
-                _mnuPresets.Items.Add(mi);
+                presets.Items.Add(mi);
             }
-            _mnuPresets.Items.Add(new Separator());
-            var saveScene = new MenuItem { Header = "另存为场景预设…" };
+            presets.Items.Add(new Separator());
+            var saveScene = new MenuItem { Header = Loc.T("menu.saveScenePreset") };
             saveScene.Click += (s, e) => SaveCurrentAsScenePreset();
-            _mnuPresets.Items.Add(saveScene);
+            presets.Items.Add(saveScene);
         }
 
         internal void ToggleGridShow()
@@ -544,7 +549,7 @@ namespace Lumen
         {
             var page = _pages.CurrentPage; if (page == null) return;
             if (string.IsNullOrWhiteSpace(name))
-                name = InputBox.Show(this, "另存为场景预设", "预设名称：", "我的场景");
+                name = InputBox.Show(this, Loc.T("dlg.saveScene.title"), Loc.T("dlg.saveScene.prompt"), Loc.T("dlg.saveScene.default"));
             if (string.IsNullOrWhiteSpace(name)) return;
             var p = PresetLibrary.CaptureFromPage(page, name.Trim());
             if (p == null) return;
@@ -683,7 +688,7 @@ namespace Lumen
         }
         internal void AddNewPage()
         {
-            if (_pages.Add($"页面{_pages.Pages.Count + 1}")) { ComposeCurrentPage(); SaveAll(); }
+            if (_pages.Add(Loc.T("main.pageName", _pages.Pages.Count + 1))) { ComposeCurrentPage(); SaveAll(); }
         }
         internal void RemoveCurrentPage()
         {
@@ -707,7 +712,7 @@ namespace Lumen
             if (page == null) return;
             var dlg = new Window
             {
-                Title = "重命名页面", Width = 300, Height = 130,
+                Title = Loc.T("dlg.renamePage.title"), Width = 300, Height = 130,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 Owner = this,
                 Background = new SolidColorBrush(Color.FromRgb(0x1E, 0x1E, 0x1E)),
@@ -717,7 +722,7 @@ namespace Lumen
             var sp = new StackPanel { Margin = new Thickness(10) };
             sp.Children.Add(new TextBlock
             {
-                Text = "页面名称：", FontSize = 12,
+                Text = Loc.T("dlg.renamePage.prompt"), FontSize = 12,
                 Foreground = new SolidColorBrush(Color.FromRgb(0xD4, 0xD4, 0xD4)), Margin = new Thickness(0,0,0,6)
             });
             var tb = new TextBox
@@ -729,14 +734,14 @@ namespace Lumen
             };
             sp.Children.Add(tb);
             var btn = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0,8,0,0) };
-            var ok = new Button { Content = "确定", Width = 70, Margin = new Thickness(0,0,6,0) };
+            var ok = new Button { Content = Loc.T("dlg.ok"), Width = 70, Margin = new Thickness(0,0,6,0) };
             ok.Click += (s, ev) =>
             {
                 var n = tb.Text.Trim();
                 if (!string.IsNullOrEmpty(n)) { page.Name = n; ComposeCurrentPage(); SaveAll(); }
                 dlg.Close();
             };
-            var cancel = new Button { Content = "取消", Width = 70 };
+            var cancel = new Button { Content = Loc.T("dlg.cancel"), Width = 70 };
             cancel.Click += (s, ev) => dlg.Close();
             btn.Children.Add(ok); btn.Children.Add(cancel);
             sp.Children.Add(btn);
@@ -767,18 +772,27 @@ namespace Lumen
         {
             var m = new ContextMenu();
             // P6-03: 编辑模式下点击即选中，不再需要右键「编辑属性」
-            var front = new MenuItem { Header = "置顶" };
+            var front = new MenuItem { Header = Loc.T("ctx.bringFront") };
             front.Click += (s, e) => BringToFront(atom);
-            var back = new MenuItem { Header = "置底" };
+            var back = new MenuItem { Header = Loc.T("ctx.sendBack") };
             back.Click += (s, e) => SendToBack(atom);
-            var dup = new MenuItem { Header = "复制" };
+            var dup = new MenuItem { Header = Loc.T("ctx.duplicate") };
             dup.Click += (s, e) => DuplicateAtom(atom);
-            var del = new MenuItem { Header = "删除" };
+            var del = new MenuItem { Header = Loc.T("ctx.delete") };
             del.Click += (s, e) => DeleteAtom(atom);
             m.Items.Add(front);
             m.Items.Add(back);
             m.Items.Add(dup);
             m.Items.Add(del);
+            m.Items.Add(new Separator());
+
+            // 复用全局菜单功能：被全屏部件挡住、右键点不到空白区时，右键部件也能退出编辑模式 / 打开各窗口
+            var global = MakeGlobalItems(out var tgl, out var pg, out var pr, out var pre, out var gv2, out var tr2, out var ex2, out var sep2);
+            var editOnly = _editMode ? Visibility.Visible : Visibility.Collapsed;
+            pg.Visibility = editOnly; pre.Visibility = editOnly; gv2.Visibility = editOnly; tr2.Visibility = editOnly; sep2.Visibility = editOnly;
+            tgl.Header = _editMode ? Loc.T("menu.desktopMode") : Loc.T("menu.editMode");
+            PopulatePresets(pre);
+            foreach (var it in global) m.Items.Add(it);
             return m;
         }
 
@@ -832,7 +846,7 @@ namespace Lumen
         /// <summary>打开全局变量 (gv) 管理器（编辑模式右键菜单「变量…」）。改动即时重算并保存。</summary>
         private void ManageVariables()
         {
-            var win = CreateEditorWindow("全局变量");
+            var win = CreateEditorWindow(Loc.T("dlg.variables"));
             _gvWindow = win;
             var panel = new GvManagerPanel(_gv,
                 onChanged: () => { _scheduler?.MarkAllDirty(); _scheduler?.Flush(); SaveAll(); },
@@ -992,7 +1006,7 @@ namespace Lumen
                     case HK_GEAR: if (_editMode) CycleGridGear(); break;
                     case HK_PRESET: if (_editMode) CyclePreset(); break;
                     case HK_NEWPAGE:
-                        if (_editMode && _pages.Add($"页面{_pages.Pages.Count + 1}")) ComposeCurrentPage();
+                        if (_editMode && _pages.Add(Loc.T("main.pageName", _pages.Pages.Count + 1))) ComposeCurrentPage();
                         break;
                     case HK_TOGGLE_VIS: ToggleVisibility(); break;
                     default: return IntPtr.Zero;
@@ -1017,12 +1031,78 @@ namespace Lumen
                     uFlags = NativeMethods.NIF_MESSAGE | NativeMethods.NIF_ICON | NativeMethods.NIF_TIP,
                     uCallbackMessage = NativeMethods.WM_TRAYICON,
                     hIcon = GetTrayHIcon(),
-                    szTip = "Lumen"
+                    szTip = Loc.T("tray.tooltip")
                 };
                 _trayIcon = nid.hIcon;
                 NativeMethods.Shell_NotifyIcon(NativeMethods.NIM_ADD, ref nid);
             }
             catch (Exception ex) { Logger.Log("Tray icon create failed: " + ex.Message); }
+        }
+
+        /// <summary>语言切换时刷新长驻元素：主窗标题 + 托盘 ToolTip。</summary>
+        private void OnLangChanged(object sender, EventArgs e)
+        {
+            Title = Loc.T("main.title");
+            UpdateTrayTooltip();
+            // 修掉 v1 限制：若当前激活档是内置使用手册，则按新语言重装并整体重载页面
+            try { RefreshManualIfActive(); }
+            catch (Exception ex) { Logger.Log("RefreshManualIfActive failed: " + ex); }
+        }
+
+        /// <summary>
+        /// 语言切换时若当前激活档为内置使用手册，按新语言重装手册并整体重载页面，
+        /// 使手册内容随 UI 语言即时切换（v1 仅首装定语言，现已补齐）。
+        /// </summary>
+        private void RefreshManualIfActive()
+        {
+            if (!ConfigStore.IsActiveProfileManual()) return;
+
+            var oldName = _activeProfile;
+            var newName = ConfigStore.InstallBuiltinManual(); // 按新语言覆盖写入 + 设激活
+            if (string.IsNullOrEmpty(newName)) return;
+
+            // 文档名随语言变化（使用手册.json → User Manual.json）时清理旧文件，避免残留
+            if (!string.Equals(oldName, newName, StringComparison.Ordinal)
+                && ConfigStore.ProfileExists(oldName))
+                ConfigStore.DeleteProfile(oldName);
+
+            CloseEditorWindows();
+            if (_gvWindow != null) { _gvWindow.Close(); _gvWindow = null; }
+
+            var loaded = ConfigStore.Load(newName);
+            if (loaded != null)
+            {
+                _gv = loaded.Gv;
+                _ctx = new EvalContext(_gv, new SystemDataProvider());
+                PresetLibrary.ClearUser();
+                foreach (var p in loaded.UserPresets) PresetLibrary.AddUser(p);
+
+                _pages.Pages.Clear();
+                foreach (var pg in loaded.Pages) _pages.AddExisting(pg);
+                _pages.Select(0);
+            }
+
+            _activeProfile = newName;
+            _lastOverallPreset = null;
+            _scheduler = new DirtyScheduler(new List<Atom>(), _gv);
+            ComposeCurrentPage();
+            DrawRuler();
+            SaveAll();
+        }
+
+        /// <summary>用当前语言的 ToolTip 更新托盘图标（NIM_MODIFY + NIF_TIP）。</summary>
+        private void UpdateTrayTooltip()
+        {
+            if (_trayIcon == IntPtr.Zero || _hwnd == IntPtr.Zero) return;
+            var nid = new NativeMethods.NOTIFYICONDATA
+            {
+                cbSize = Marshal.SizeOf<NativeMethods.NOTIFYICONDATA>(),
+                hWnd = _hwnd,
+                uID = NativeMethods.TRAY_ID,
+                uFlags = NativeMethods.NIF_TIP,
+                szTip = Loc.T("tray.tooltip")
+            };
+            NativeMethods.Shell_NotifyIcon(NativeMethods.NIM_MODIFY, ref nid);
         }
 
         private void DestroyTrayIcon()
@@ -1086,11 +1166,11 @@ namespace Lumen
         private void ShowTrayMenu()
         {
             var menu = new ContextMenu();
-            var mSettings = new MenuItem { Header = "设置" };
+            var mSettings = new MenuItem { Header = Loc.T("menu.settings") };
             mSettings.Click += (s, e) => ShowSettings();
-            var mToggle = new MenuItem { Header = Visibility == Visibility.Visible ? "隐藏覆盖层" : "显示覆盖层" };
+            var mToggle = new MenuItem { Header = Visibility == Visibility.Visible ? Loc.T("tray.hideOverlay") : Loc.T("tray.showOverlay") };
             mToggle.Click += (s, e) => ToggleVisibility();
-            var mExit = new MenuItem { Header = "退出" };
+            var mExit = new MenuItem { Header = Loc.T("menu.exit") };
             mExit.Click += (s, e) => Application.Current.Shutdown();
             menu.Items.Add(mSettings);
             menu.Items.Add(mToggle);
@@ -1147,11 +1227,11 @@ namespace Lumen
             {
                 var name = ConfigStore.ImportProfileFromFile(path, null);
                 SwitchProfile(name);
-                MessageBox.Show(this, $"已导入配置档「{name}」并切换。", "导入完成", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(this, Loc.T("msg.importDone", name), Loc.T("msg.importDoneTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "导入失败：" + ex.Message, "导入失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(this, Loc.T("msg.importFail") + ex.Message, Loc.T("msg.importFailTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
@@ -1163,7 +1243,7 @@ namespace Lumen
             if (string.IsNullOrWhiteSpace(name)) return;
             if (ConfigStore.ProfileExists(name))
             {
-                MessageBox.Show(this, $"已存在名为「{name}」的配置档。", "新建配置档", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(this, Loc.T("msg.profileExists", name), Loc.T("msg.newProfileTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             SaveAll();                 // 先存当前档
@@ -1212,7 +1292,7 @@ namespace Lumen
         {
             if (name == _activeProfile)
             {
-                MessageBox.Show(this, "不能删除当前正在使用的配置档，请先切换到其他配置档。", "删除配置档", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(this, Loc.T("msg.cannotDeleteActiveProfile"), Loc.T("msg.deleteProfileTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             if (ConfigStore.ProfileExists(name)) ConfigStore.DeleteProfile(name);
@@ -1227,6 +1307,7 @@ namespace Lumen
 
         private void OnClosing(object sender, CancelEventArgs e)
         {
+            Loc.LangChanged -= OnLangChanged;
             SaveAll();
             if (_hwnd != IntPtr.Zero)
             {
