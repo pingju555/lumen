@@ -418,8 +418,10 @@ namespace Lumen
         {
             toggleMode = new MenuItem { Header = Loc.T("menu.editMode") };
             toggleMode.Click += (s, e) => SetEditMode(!_editMode);
-            pageGridBg = new MenuItem { Header = Loc.T("menu.settings") };
+            pageGridBg = new MenuItem { Header = Loc.T("menu.pageSettings") };
             pageGridBg.Click += (s, e) => OpenPageGridBgWindow();
+            var programSettings = new MenuItem { Header = Loc.T("menu.programSettings") };
+            programSettings.Click += (s, e) => ShowSettings();
             profile = new MenuItem { Header = Loc.T("menu.profile") };
             profile.Click += (s, e) => OpenProfileWindow();
             presets = new MenuItem { Header = Loc.T("menu.applyPreset") };
@@ -430,7 +432,7 @@ namespace Lumen
             exit = new MenuItem { Header = Loc.T("menu.exit"), InputGestureText = "Ctrl+Alt+Q" };
             exit.Click += (s, e) => Application.Current.Shutdown();
             sep = new Separator();
-            return new UIElement[] { toggleMode, pageGridBg, profile, presets, gv, tree, sep, exit };
+            return new UIElement[] { toggleMode, pageGridBg, programSettings, profile, presets, gv, tree, sep, exit };
         }
 
         /// <summary>菜单每次打开时刷新：模式切换项文案 + 编辑态专属项显隐 + 动态列表。</summary>
@@ -1166,7 +1168,7 @@ namespace Lumen
         private void ShowTrayMenu()
         {
             var menu = new ContextMenu();
-            var mSettings = new MenuItem { Header = Loc.T("menu.settings") };
+            var mSettings = new MenuItem { Header = Loc.T("menu.programSettings") };
             mSettings.Click += (s, e) => ShowSettings();
             var mToggle = new MenuItem { Header = Visibility == Visibility.Visible ? Loc.T("tray.hideOverlay") : Loc.T("tray.showOverlay") };
             mToggle.Click += (s, e) => ToggleVisibility();

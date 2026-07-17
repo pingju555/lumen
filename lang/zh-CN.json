@@ -318,5 +318,7 @@
   "preset.GridWorkspace": "网格工作区",
   "preset.CanvasFree": "自由画布",
   "preset.Day": "白天",
-  "preset.Night": "夜晚"
+  "preset.Night": "夜晚",
+  "menu.pageSettings": "页面设置...",
+  "menu.programSettings": "程序设置..."
 }

@@ -318,5 +318,7 @@
   "preset.GridWorkspace": "Grid Workspace",
   "preset.CanvasFree": "Free Canvas",
   "preset.Day": "Day",
-  "preset.Night": "Night"
+  "preset.Night": "Night",
+  "menu.pageSettings": "Page Settings...",
+  "menu.programSettings": "Program Settings..."
 }
