@@ -25,19 +25,19 @@ namespace Lumen.Ui
             new() { Category = Loc.T("func.cat.system"), Name = "bi",  Sig = "bi(key)",            Desc = Loc.T("func.bi"), Insert = "bi(level)" },
             new() { Category = Loc.T("func.cat.system"), Name = "dp",  Sig = "dp(px)",             Desc = Loc.T("func.dp"), Insert = "dp(100)" },
             // ---------- 变量 ----------
-            new() { Category = Loc.T("func.cat.var"),    Name = "gv",  Sig = "gv(name[, default])", Desc = Loc.T("func.gv"), Insert = "gv(accent)" },
+            new() { Category = Loc.T("func.cat.var"),    Name = "gv",  Sig = "gv(scope,name[,N])", Desc = Loc.T("func.gv"), Insert = "gv(0, accent)" },
             // ---------- 逻辑 ----------
             new() { Category = Loc.T("func.cat.logic"),  Name = "if",  Sig = "if(cond,a,b)",       Desc = Loc.T("func.if"), Insert = "if(1>0, 高, 低)" },
             // ---------- 文本 ----------
             new() { Category = Loc.T("func.cat.text"),   Name = "tc",  Sig = "tc(cmd,text[,n])",   Desc = Loc.T("func.tc"), Insert = "tc(ell, 文本, 10)" },
             new() { Category = Loc.T("func.cat.text"),   Name = "uc",  Sig = "uc(text)",           Desc = Loc.T("func.uc"), Insert = "uc(hello)" },
             new() { Category = Loc.T("func.cat.text"),   Name = "re",  Sig = "re(text,pat,repl)",  Desc = Loc.T("func.re"), Insert = "re(文本, \\d+, #)" },
-            // ---------- 媒体 ----------
+            // ---------- 媒体 / 数学 / 颜色 / 外部数据 ----------
             new() { Category = Loc.T("func.cat.media"),  Name = "mi",  Sig = "mi(key)",            Desc = Loc.T("func.mi"), Insert = "mi(title)" },
-            new() { Category = Loc.T("func.cat.media"),  Name = "mu",  Sig = "mu(cmd)",            Desc = Loc.T("func.mu"), Insert = "mu(play)" },
-            // ---------- 应用 ----------
-            new() { Category = Loc.T("func.cat.app"),    Name = "ai",  Sig = "ai([n])",            Desc = Loc.T("func.ai"), Insert = "ai(1)" },
-            new() { Category = Loc.T("func.cat.app"),    Name = "an",  Sig = "an(n)",              Desc = Loc.T("func.an"), Insert = "an(1)" },
+            new() { Category = Loc.T("func.cat.math"),   Name = "mu",  Sig = "mu(op,x[,y,z])",     Desc = Loc.T("func.mu"), Insert = "mu(round, 3.14)" },
+            new() { Category = Loc.T("func.cat.color"),  Name = "ce",  Sig = "ce(op,color[,amt])", Desc = Loc.T("func.ce"), Insert = "ce(lum, #3399FF, 20)" },
+            new() { Category = Loc.T("func.cat.color"),  Name = "bp",  Sig = "bp(type[,source])",  Desc = Loc.T("func.bp"), Insert = "bp(vibrant, cover)" },
+            new() { Category = Loc.T("func.cat.data"),   Name = "wg",  Sig = "wg(url[,n,field])",  Desc = Loc.T("func.wg"), Insert = "wg(https://example.com/feed.xml)" },
             // ---------- 杂项 ----------
             new() { Category = Loc.T("func.cat.misc"),   Name = "fl",  Sig = "fl(idx,...)",        Desc = Loc.T("func.fl"), Insert = "fl(2, a, b, c)" },
             new() { Category = Loc.T("func.cat.misc"),   Name = "rng", Sig = "rng([min,max])",     Desc = Loc.T("func.rng"), Insert = "rng(0,100)" },

@@ -82,11 +82,22 @@ namespace Lumen.Presets
             };
         }
 
-        /// <summary>经 DTO 往返深拷贝原子列表（复用 ConfigStore 既有多态序列化），保证预设与页面实例互不共享。</summary>
+        /// <summary>深拷贝原子列表：复用 Atom.Clone（重生唯一 Id + 一致重映射内部 gv("id",...) 引用），
+        /// 保证预设与页面实例互不共享，且套用后成为完全独立的实例。多个顶层原子共享同一映射表，
+        /// 故全部克隆完成后再统一重映射，以覆盖顶层原子之间的交叉引用。</summary>
         private static List<Atom> CloneAtoms(IEnumerable<Atom> src)
         {
-            if (src == null) return new List<Atom>();
-            return src.Select(a => ConfigStore.AtomFromDto(ConfigStore.AtomToDto(a))).ToList();
+            var map = new Dictionary<string, string>();
+            var result = new List<Atom>();
+            if (src != null)
+                foreach (var a in src)
+                {
+                    var clone = a.Clone(map);
+                    result.Add(clone);
+                }
+            foreach (var clone in result)
+                clone.RemapIds(map);
+            return result;
         }
 
         public static string Export(string name)

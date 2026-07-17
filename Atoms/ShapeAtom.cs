@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -10,7 +11,8 @@ using Lumen.I18n;
 
 namespace Lumen.Atoms
 {
-    public enum ShapeKind { Rect, Ellipse }
+    /// <summary>形状种类：矩形 / 正方形 / 椭圆 / 圆形 / 三角形 / 直角三角形 / 多边形 / 扇形 / 弧形 / SVG路径。圆角矩形 = 矩形 + 圆角半径(radius)；线 = 矩形某一边极小(细矩形)。</summary>
+    public enum ShapeKind { Rect, Square, Ellipse, Circle, Triangle, RightTriangle, Polygon, Sector, Arc, Path }
 
     /// <summary>形状纹理效果（模拟质感，不依赖 DWM 全窗模糊，逐形状生效）。</summary>
     public enum ShapeTexture
@@ -19,7 +21,7 @@ namespace Lumen.Atoms
         Metal, Neon, Matte, Wood, Marble, Carbon, Holographic, Paper, Fabric, Liquid
     }
 
-    /// <summary>形状原子：矩形 / 椭圆 两个基元。圆角矩形 = 矩形 + 圆角半径(radius)；线 = 矩形某一边极小(细矩形)。</summary>
+    /// <summary>形状原子：10 种几何基元 + 14 种程序化纹理质感。几何在 0..100 归一化坐标系内构建，由 Path/Rectangle/Ellipse 的 Stretch 拉伸到原子实际尺寸。</summary>
     public class ShapeAtom : Atom
     {
         public PropertyValue KindProp = new StaticValue("Rect");
@@ -29,11 +31,20 @@ namespace Lumen.Atoms
         public PropertyValue RadiusProp = new StaticValue("0");
         public PropertyValue DashProp = new StaticValue("Solid");
         public PropertyValue ShadowProp = new StaticValue("0");
+        /// <summary>多边形边数（≥3，仅「多边形」生效）。</summary>
+        public PropertyValue SidesProp = new StaticValue("6");
+        /// <summary>扇形 / 弧形 起始角(°，0=正上方，顺时针为正)。</summary>
+        public PropertyValue StartAngleProp = new StaticValue("0");
+        /// <summary>扇形 / 弧形 结束角(°，0=正上方，顺时针为正)。</summary>
+        public PropertyValue EndAngleProp = new StaticValue("90");
+        /// <summary>SVG 路径数据（viewBox 0..100，按原子实际尺寸拉伸；仅「SVG路径」生效）。</summary>
+        public PropertyValue PathDataProp = new StaticValue("M10 50 L50 10 L90 50 L50 90 Z");
         /// <summary>纹理效果：None / Frosted(毛玻璃) / Glass(玻璃感) / Plastic(塑料感) / Metal(金属) / Neon(霓虹) / Matte(哑光) / Wood(木纹) / Marble(大理石) / Carbon(碳纤维) / Holographic(虹彩) / Paper(纸张) / Fabric(布纹) / Liquid(液态)。</summary>
         public PropertyValue TextureProp = new StaticValue("None");
 
         private Shape _shape;
         private Shape _gloss;
+        private string _geoSig = null;
 
         public ShapeAtom() : base("Shape") { Bounds = new Rect(120, 200, 160, 120); }
 
@@ -55,16 +66,117 @@ namespace Lumen.Atoms
 
         private Shape BuildShape()
         {
-            var kind = KindProp.Resolve(Ctx).AsStr();
-            Shape s = kind.Trim().ToLowerInvariant() switch
+            var kind = KindProp.Resolve(Ctx).AsStr().Trim().ToLowerInvariant();
+            double w = Bounds.Width, h = Bounds.Height;
+            Shape s;
+            switch (kind)
             {
-                "ellipse" => new Ellipse(),
-                _ => new Rectangle()
-            };
-            s.Width = Bounds.Width;
-            s.Height = Bounds.Height;
-            s.Stretch = Stretch.Fill;
+                case "square":
+                    s = new Rectangle { Stretch = Stretch.Uniform };
+                    break;
+                case "circle":
+                    s = new Ellipse { Stretch = Stretch.Uniform };
+                    break;
+                case "ellipse":
+                    s = new Ellipse { Stretch = Stretch.Fill };
+                    break;
+                case "triangle":
+                case "righttriangle":
+                case "polygon":
+                case "sector":
+                case "arc":
+                case "path":
+                    s = new Path { Stretch = Stretch.Fill, Data = BuildGeometry(kind) };
+                    break;
+                default: // rect（含回退）
+                    s = new Rectangle { Stretch = Stretch.Fill };
+                    break;
+            }
+            s.Width = w;
+            s.Height = h;
             return s;
+        }
+
+        private static bool IsPathKind(string k) =>
+            k is "triangle" or "righttriangle" or "polygon" or "sector" or "arc" or "path";
+
+        /// <summary>参数化重建几何（多边形边数 / 扇形·弧形角度 / SVG路径 变化时）。仅对 Path 类形状生效；矩形/椭圆靠 Stretch 与 RadiusX 处理，不在此重建。</summary>
+        private void RebuildGeometryIfNeeded()
+        {
+            var kind = KindProp.Resolve(Ctx).AsStr().Trim().ToLowerInvariant();
+            if (!IsPathKind(kind)) return;
+            var sig = $"{kind}|{Txt(SidesProp, Ctx)}|{Txt(StartAngleProp, Ctx)}|{Txt(EndAngleProp, Ctx)}|{Txt(PathDataProp, Ctx)}";
+            if (sig == _geoSig) return;
+            _geoSig = sig;
+            var geo = BuildGeometry(kind);
+            if (_shape is Path sp) sp.Data = geo;
+            if (_gloss is Path gp) gp.Data = geo;
+        }
+
+        /// <summary>在 0..100 归一化坐标系内构建几何；Path.Stretch=Fill 会拉伸到原子实际尺寸。</summary>
+        private Geometry BuildGeometry(string kind)
+        {
+            switch (kind)
+            {
+                case "triangle":
+                    return Poly(new Point(50, 3), new Point(3, 97), new Point(97, 97));
+                case "righttriangle":
+                    return Poly(new Point(3, 3), new Point(97, 3), new Point(3, 97));
+                case "polygon":
+                {
+                    int sides = 6;
+                    if (int.TryParse(Txt(SidesProp, Ctx), out var s) && s >= 3) sides = s;
+                    var pts = new Point[sides];
+                    for (int i = 0; i < sides; i++)
+                    {
+                        double a = -Math.PI / 2 + i * 2 * Math.PI / sides;
+                        pts[i] = new Point(50 + 48 * Math.Cos(a), 50 + 48 * Math.Sin(a));
+                    }
+                    return Poly(pts);
+                }
+                case "sector":
+                case "arc":
+                {
+                    double.TryParse(Txt(StartAngleProp, Ctx), out var sa);
+                    double.TryParse(Txt(EndAngleProp, Ctx), out var ea);
+                    double a0 = sa * Math.PI / 180, a1 = ea * Math.PI / 180;
+                    if (a1 < a0) a1 += 2 * Math.PI;   // 顺时针取较长跨度填充
+                    int steps = Math.Max(2, (int)Math.Ceiling((a1 - a0) / (Math.PI / 90)));
+                    var pts = new Point[steps + 1];
+                    for (int i = 0; i <= steps; i++)
+                    {
+                        double a = a0 + (a1 - a0) * i / steps;
+                        pts[i] = new Point(50 + 48 * Math.Sin(a), 50 - 48 * Math.Cos(a));   // 0°=正上方，顺时针
+                    }
+                    if (kind == "arc")
+                        return OpenPath(pts);
+                    // 扇形：圆心 -> 弧起点 -> 弧 -> 圆心
+                    var center = new Point(50, 50);
+                    var fig = new PathFigure(center, new PathSegment[]
+                    {
+                        new LineSegment(pts[0], true),
+                        new PolyLineSegment(pts.Skip(1).ToArray(), true),
+                        new LineSegment(center, true)
+                    }, true);
+                    return new PathGeometry(new[] { fig });
+                }
+                case "path":
+                    try { return Geometry.Parse(Txt(PathDataProp, Ctx).Trim()); }
+                    catch { return new RectangleGeometry(new Rect(0, 0, 100, 100)); }
+                default:
+                    return new RectangleGeometry(new Rect(0, 0, 100, 100));
+            }
+        }
+
+        private static Geometry Poly(params Point[] pts)
+        {
+            var fig = new PathFigure(pts[0], pts.Skip(1).Select(p => new LineSegment(p, true)).ToArray(), true);
+            return new PathGeometry(new[] { fig });
+        }
+        private static Geometry OpenPath(params Point[] pts)
+        {
+            var fig = new PathFigure(pts[0], pts.Skip(1).Select(p => new LineSegment(p, true)).ToArray(), false);
+            return new PathGeometry(new[] { fig });
         }
 
         private static DropShadowEffect MakeShadow() => new DropShadowEffect { Color = Colors.Black, BlurRadius = 8, ShadowDepth = 3, Opacity = 0.5 };
@@ -73,7 +185,10 @@ namespace Lumen.Atoms
         {
             if (_shape == null || _gloss == null) return;
             if (Ctx == null) return;
+            RebuildGeometryIfNeeded();
 
+            var kind = KindProp.Resolve(Ctx).AsStr().Trim().ToLowerInvariant();
+            bool isArc = kind == "arc";
             var fillBrush = ResolveBrush(FillProp, Ctx, Brushes.Transparent);
             var strokeBrush = ResolveBrush(StrokeProp, Ctx, Brushes.Transparent);
             double.TryParse(Txt(StrokeWProp, Ctx), out var w); if (w < 0) w = 0;
@@ -96,7 +211,7 @@ namespace Lumen.Atoms
             {
                 // 无纹理：_shape 直接承载外观
                 _gloss.Visibility = Visibility.Collapsed;
-                _shape.Fill = fillBrush;
+                _shape.Fill = isArc ? Brushes.Transparent : fillBrush;
                 _shape.Stroke = strokeBrush;
                 _shape.StrokeThickness = w;
                 _shape.Effect = shadow ? MakeShadow() : null;
@@ -113,6 +228,8 @@ namespace Lumen.Atoms
                 _gloss.Visibility = Visibility.Visible;
                 var baseColor = GetDominantColor(fillBrush);
                 _gloss.Fill = BuildTextureBrush(tex, baseColor);
+                // 弧形无填充区域，仅保留描边（让霓虹/玻璃描边等质感仍可在弧线上体现）
+                if (isArc) _gloss.Fill = Brushes.Transparent;
                 // 描边/发光按质感类型定制，其余沿用用户描边
                 switch (tex)
                 {
@@ -317,7 +434,8 @@ namespace Lumen.Atoms
             var d = new System.Collections.Generic.Dictionary<string, PropertyValue>
             {
                 ["kind"] = KindProp, ["fill"] = FillProp, ["stroke"] = StrokeProp, ["strokeW"] = StrokeWProp,
-                ["radius"] = RadiusProp, ["dash"] = DashProp, ["shadow"] = ShadowProp, ["texture"] = TextureProp
+                ["radius"] = RadiusProp, ["dash"] = DashProp, ["shadow"] = ShadowProp, ["texture"] = TextureProp,
+                ["sides"] = SidesProp, ["startAngle"] = StartAngleProp, ["endAngle"] = EndAngleProp, ["pathData"] = PathDataProp
             };
             AddCommonProps(d);
             return d;
@@ -348,6 +466,10 @@ namespace Lumen.Atoms
             if (props.TryGetValue("dash", out var d)) DashProp = d;
             if (props.TryGetValue("shadow", out var sh)) ShadowProp = sh;
             if (props.TryGetValue("texture", out var tx)) TextureProp = tx;
+            if (props.TryGetValue("sides", out var sd)) SidesProp = sd;
+            if (props.TryGetValue("startAngle", out var sa)) StartAngleProp = sa;
+            if (props.TryGetValue("endAngle", out var ea)) EndAngleProp = ea;
+            if (props.TryGetValue("pathData", out var pd)) PathDataProp = pd;
             // 旧「圆角矩形」配置若未单独设 radius，则补默认圆角 14，避免归并后变直角
             if (roundRect && (!props.ContainsKey("radius") || props["radius"].Resolve(Ctx).AsStr().Trim() is "" or "0"))
                 RadiusProp = new StaticValue("14");
@@ -357,14 +479,18 @@ namespace Lumen.Atoms
         public override List<EditField> EditFields()
         {
             var l = base.EditFields();
-            l.Add(new EditField { Key = "kind",    Label = Loc.T("atom.label.shape"),     Kind = EditKind.Choice, Choices = new[] { "Rect", "Ellipse" }, ChoiceLocPrefix = "atom.shapeKind." });
-            l.Add(new EditField { Key = "fill",    Label = Loc.T("atom.label.fill"),     Kind = EditKind.Color });
-            l.Add(new EditField { Key = "stroke",  Label = Loc.T("atom.label.stroke"),     Kind = EditKind.Color });
-            l.Add(new EditField { Key = "strokeW", Label = Loc.T("atom.label.strokeWidth"), Kind = EditKind.Number, Min = 0, Max = 60, Hint = Loc.T("atom.hint.strokeW") });
-            l.Add(new EditField { Key = "radius", Label = Loc.T("atom.label.radius"), Kind = EditKind.Slider, Min = 0, Max = 120 });
-            l.Add(new EditField { Key = "dash", Label = Loc.T("atom.label.dash"), Kind = EditKind.Choice, Choices = new[] { "Solid", "Dash", "Dot" }, ChoiceLocPrefix = "atom.dash." });
-            l.Add(new EditField { Key = "shadow", Label = Loc.T("atom.label.shadow"), Kind = EditKind.Bool });
-            l.Add(new EditField { Key = "texture", Label = Loc.T("atom.label.texture"), Kind = EditKind.Choice, Choices = new[] { "None", "Frosted", "Glass", "Plastic", "Metal", "Neon", "Matte", "Wood", "Marble", "Carbon", "Holographic", "Paper", "Fabric", "Liquid" }, ChoiceLocPrefix = "atom.texture.", Hint = Loc.T("atom.hint.textureColor") });
+            l.Add(new EditField { Key = "kind",    Label = Loc.T("atom.label.shape"),     Kind = EditKind.Choice, Choices = new[] { "Rect", "Square", "Ellipse", "Circle", "Triangle", "RightTriangle", "Polygon", "Sector", "Arc", "Path" }, ChoiceLocPrefix = "atom.shapeKind." });
+            l.Add(new EditField { Key = "fill",    Label = Loc.T("atom.label.fill"),     Kind = EditKind.Color, Tab = "style" });
+            l.Add(new EditField { Key = "stroke",  Label = Loc.T("atom.label.stroke"),     Kind = EditKind.Color, Tab = "style" });
+            l.Add(new EditField { Key = "strokeW", Label = Loc.T("atom.label.strokeWidth"), Kind = EditKind.Number, Min = 0, Max = 60, Hint = Loc.T("atom.hint.strokeW"), Tab = "style" });
+            l.Add(new EditField { Key = "radius", Label = Loc.T("atom.label.radius"), Kind = EditKind.Slider, Min = 0, Max = 120, ShowIfKey = "kind", ShowIfValues = new[] { "Rect", "Square" }, Tab = "style" });
+            l.Add(new EditField { Key = "dash", Label = Loc.T("atom.label.dash"), Kind = EditKind.Choice, Choices = new[] { "Solid", "Dash", "Dot" }, ChoiceLocPrefix = "atom.dash.", Tab = "style" });
+            l.Add(new EditField { Key = "sides", Label = Loc.T("atom.label.sides"), Kind = EditKind.Number, Min = 3, Max = 24, Hint = Loc.T("atom.hint.sides"), ShowIfKey = "kind", ShowIfValues = new[] { "Polygon" } });
+            l.Add(new EditField { Key = "startAngle", Label = Loc.T("atom.label.startAngle"), Kind = EditKind.Number, Min = -360, Max = 360, Hint = Loc.T("atom.hint.angle"), ShowIfKey = "kind", ShowIfValues = new[] { "Sector", "Arc" } });
+            l.Add(new EditField { Key = "endAngle", Label = Loc.T("atom.label.endAngle"), Kind = EditKind.Number, Min = -360, Max = 360, Hint = Loc.T("atom.hint.angle"), ShowIfKey = "kind", ShowIfValues = new[] { "Sector", "Arc" } });
+            l.Add(new EditField { Key = "pathData", Label = Loc.T("atom.label.pathData"), Kind = EditKind.Text, Hint = Loc.T("atom.hint.pathData"), ShowIfKey = "kind", ShowIfValues = new[] { "Path" } });
+            l.Add(new EditField { Key = "shadow", Label = Loc.T("atom.label.shadow"), Kind = EditKind.Bool, Tab = "style" });
+            l.Add(new EditField { Key = "texture", Label = Loc.T("atom.label.texture"), Kind = EditKind.Choice, Choices = new[] { "None", "Frosted", "Glass", "Plastic", "Metal", "Neon", "Matte", "Wood", "Marble", "Carbon", "Holographic", "Paper", "Fabric", "Liquid" }, ChoiceLocPrefix = "atom.texture.", Hint = Loc.T("atom.hint.textureColor"), Tab = "style" });
             return l;
         }
     }

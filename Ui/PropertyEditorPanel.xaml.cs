@@ -34,6 +34,7 @@ namespace Lumen.Ui
         private readonly EvalContext _ctx;
         private readonly List<EditField> _fields;
         private readonly Dictionary<string, FieldState> _states = new();
+        private readonly Dictionary<string, Grid> _fieldRows = new();   // 字段 Key → 其行容器(Grid)，供条件显隐刷新
         private StackPanel _triggerPanel;
 
         /// <summary>隐藏底部确定/取消按钮（供嵌入 PropWindow 时使用，由外部提供应用按钮）。</summary>
@@ -94,93 +95,101 @@ namespace Lumen.Ui
             }
         }
 
-        // ---------- 分页：按字段类别 + 交互 / 触发器 拆成单选标签页 ----------
+        // ---------- 分页：由原子 EditTabs() 决定有序标签页，字段按 Tab 键归位；交互/触发器/自定义页特殊处理 ----------
+        private static readonly HashSet<string> KnownTabKeys = new HashSet<string> { "content", "style", "layout", "animation", "interaction", "trigger" };
+
         private void BuildTabs()
         {
-            var content = new List<EditField>();
-            var layout = new List<EditField>();
-            var anim = new List<EditField>();
+            Tabs.Items.Clear();
+
+            // 一次性构建所有字段行，按 Tab 键归类
+            var rowsByKey = new Dictionary<string, List<Grid>>();
+            var props = _atom.GetProps();
             foreach (var f in _fields)
             {
-                if (f.Category == FieldCategory.Layout) layout.Add(f);
-                else if (f.Category == FieldCategory.Animation) anim.Add(f);
-                else content.Add(f);
+                var raw = props.TryGetValue(f.Key, out var pv) ? PropertyValue.Serialize(pv) : "";
+                var mode = raw.StartsWith("gv:", StringComparison.OrdinalIgnoreCase) ? PropMode.Global
+                         : raw.Contains("$") ? PropMode.Formula : PropMode.Static;
+                var st = new FieldState { Field = f, Mode = mode };
+                _states[f.Key] = st;
+                var row = BuildFieldRow(f, raw, st);
+                _fieldRows[f.Key] = row;
+                var key = f.Tab ?? "content";
+                if (!rowsByKey.TryGetValue(key, out var lst)) { lst = new List<Grid>(); rowsByKey[key] = lst; }
+                lst.Add(row);
             }
+            RefreshConditionVisibility();
 
-            var pages = new List<(string header, UIElement body)>();
-            pages.Add((Loc.T("prop.tab.content"), BuildFieldList(content)));
-            if (layout.Count > 0) pages.Add((Loc.T("prop.tab.layout"), BuildFieldList(layout)));
-            if (anim.Count > 0) pages.Add((Loc.T("prop.tab.anim"), BuildFieldList(anim)));
-            pages.Add((Loc.T("prop.tab.interaction"), BuildInteractionBlock()));
-            pages.Add((Loc.T("prop.tab.trigger"), BuildTriggerBlock()));
-
-            foreach (var (header, body) in pages)
+            // 按原子声明的顺序生成标签页
+            foreach (var spec in _atom.EditTabs())
             {
+                UIElement body;
+                if (spec.Key == "interaction") body = BuildInteractionBlock();
+                else if (spec.Key == "trigger") body = BuildTriggerBlock();
+                else if (_atom is ICustomTabProvider c && !KnownTabKeys.Contains(spec.Key))
+                {
+                    body = c.BuildCustomTab(spec.Key);
+                    // 组件变量编辑器改动后：刷新预览 + 重组页面（使子树 cg 重新求值）并保存
+                    if (_atom is ComponentAtom comp)
+                        comp.VarChanged = () => { _onPreview?.Invoke(); _onStructuralChange?.Invoke(); };
+                }
+                else
+                {
+                    if (!rowsByKey.TryGetValue(spec.Key, out var lst) || lst.Count == 0) continue; // 空字段页跳过
+                    var sp = new StackPanel { Orientation = Orientation.Vertical };
+                    foreach (var r in lst) sp.Children.Add(r);
+                    body = sp;
+                }
                 if (body == null) continue;
                 var sv = new ScrollViewer { MaxHeight = 400, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
                 sv.Content = body;
-                var tab = new TabItem { Header = header };
+                var tab = new TabItem { Header = Loc.T(spec.LocKey) };
                 tab.Content = sv;
                 Tabs.Items.Add(tab);
             }
             if (Tabs.Items.Count > 0) Tabs.SelectedIndex = 0;
         }
 
-        /// <summary>把一组字段渲染为竖向面板（每个字段一行：标签 + [值|公式|变量] 三态输入）。</summary>
-        private StackPanel BuildFieldList(List<EditField> fields)
+        /// <summary>把单个字段渲染为一行（标签 + [值|公式|变量] 三态输入），供标签页按需归位。</summary>
+        private Grid BuildFieldRow(EditField f, string raw, FieldState st)
         {
-            var panel = new StackPanel { Orientation = Orientation.Vertical };
-            if (fields.Count == 0) return panel;
-            var props = _atom.GetProps();
-            foreach (var f in fields)
+            var row = new Grid { Margin = new Thickness(0, 0, 0, 12) };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(92) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            var label = new TextBlock
             {
-                var raw = props.TryGetValue(f.Key, out var pv) ? PropertyValue.Serialize(pv) : "";
-                var mode = raw.StartsWith("gv:", StringComparison.OrdinalIgnoreCase) ? PropMode.Global
-                         : raw.Contains("$") ? PropMode.Formula : PropMode.Static;
+                Text = f.Label,
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(0, 4, 8, 0),
+                Foreground = new SolidColorBrush(Color.FromRgb(0xD4, 0xD4, 0xD4)),
+                TextWrapping = TextWrapping.Wrap
+            };
+            Grid.SetColumn(label, 0);
+            row.Children.Add(label);
 
-                var st = new FieldState { Field = f, Mode = mode };
-                _states[f.Key] = st;
+            st.ValueHost = BuildValueEditor(f, raw, st);
+            st.FormulaHost = BuildFormulaHost(st);
+            st.GvHost = BuildGvHost(st);
+            SyncHostVisibility(st);
 
-                var row = new Grid { Margin = new Thickness(0, 0, 0, 12) };
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(92) });
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-                var label = new TextBlock
+            var input = new StackPanel { Orientation = Orientation.Vertical };
+            input.Children.Add(MakeModeToggle(st));
+            input.Children.Add(st.ValueHost);
+            input.Children.Add(st.FormulaHost);
+            input.Children.Add(st.GvHost);
+            if (!string.IsNullOrEmpty(f.Hint))
+                input.Children.Add(new TextBlock
                 {
-                    Text = f.Label,
-                    VerticalAlignment = VerticalAlignment.Top,
-                    Margin = new Thickness(0, 4, 8, 0),
-                    Foreground = new SolidColorBrush(Color.FromRgb(0xD4, 0xD4, 0xD4)),
-                    TextWrapping = TextWrapping.Wrap
-                };
-                Grid.SetColumn(label, 0);
-                row.Children.Add(label);
-
-                st.ValueHost = BuildValueEditor(f, raw, st);
-                st.FormulaHost = BuildFormulaHost(st);
-                st.GvHost = BuildGvHost(st);
-                SyncHostVisibility(st);
-
-                var input = new StackPanel { Orientation = Orientation.Vertical };
-                input.Children.Add(MakeModeToggle(st));
-                input.Children.Add(st.ValueHost);
-                input.Children.Add(st.FormulaHost);
-                input.Children.Add(st.GvHost);
-                if (!string.IsNullOrEmpty(f.Hint))
-                    input.Children.Add(new TextBlock
-                    {
-                        Text = f.Hint,
-                        FontSize = 10,
-                        Foreground = new SolidColorBrush(Color.FromRgb(0x9A, 0x9A, 0x9A)),
-                        TextWrapping = TextWrapping.Wrap,
-                        Margin = new Thickness(0, 4, 0, 0)
-                    });
-                Grid.SetColumn(input, 1);
-                row.Children.Add(input);
-
-                panel.Children.Add(row);
-            }
-            return panel;
+                    Text = f.Hint,
+                    FontSize = 10,
+                    Foreground = new SolidColorBrush(Color.FromRgb(0x9A, 0x9A, 0x9A)),
+                    TextWrapping = TextWrapping.Wrap,
+                    Margin = new Thickness(0, 4, 0, 0)
+                });
+            Grid.SetColumn(input, 1);
+            row.Children.Add(input);
+            return row;
         }
 
         // ---------- 动作类型选项（P5 行为系统，供点击动作 / 流程动作复用） ----------
@@ -411,7 +420,7 @@ namespace Lumen.Ui
                 ("prop.preset.darkMode", "si(dark) = 1"),
                 ("prop.preset.batteryLow", "bi(level) < 20"),
                 ("prop.preset.charging", "bi(plugged) = 1"),
-                ("prop.preset.appForeground", "ai() > 0"),
+                ("prop.preset.appForeground", "mi(avail) > 0"),
                 ("prop.preset.gvTrue", "gv(flag) = 1"),
             };
             foreach (var (key, _) in presets) presetCb.Items.Add(Loc.T(key));
@@ -1018,7 +1027,7 @@ namespace Lumen.Ui
 
             if (_ctx == null) { st.FormulaPreview.Visibility = Visibility.Collapsed; return; }
 
-            if (inner.Contains("mu(") || inner.Contains("an("))
+            if (inner.Contains("mu("))
             {
                 st.FormulaPreview.Text = Loc.T("prop.formula.actionNoPreview");
                 st.FormulaPreview.Foreground = new SolidColorBrush(Color.FromRgb(0x80, 0x80, 0x80));
@@ -1112,6 +1121,25 @@ namespace Lumen.Ui
             catch { return; }
             if (changedField.Kind == EditKind.Choice) _onStructuralChange?.Invoke();
             else _onPreview?.Invoke();
+            // 若本次变更的是某字段的显隐依赖键(kind 等)，刷新条件可见性
+            if (_fields.Any(f => f.ShowIfKey == changedField.Key))
+                RefreshConditionVisibility();
+        }
+
+        /// <summary>依据各字段的 ShowIf 元数据，按依赖字段(kind 等)当前值决定字段行显隐：仅当依赖值 ∈ ShowIfValues 才显示。</summary>
+        private void RefreshConditionVisibility()
+        {
+            if (_fieldRows.Count == 0) return;
+            var props = _atom.GetProps();
+            foreach (var f in _fields)
+            {
+                if (string.IsNullOrEmpty(f.ShowIfKey) || f.ShowIfValues == null || f.ShowIfValues.Length == 0)
+                    continue;
+                if (!_fieldRows.TryGetValue(f.Key, out var row)) continue;
+                bool show = props.TryGetValue(f.ShowIfKey, out var dep)
+                            && f.ShowIfValues.Contains(PropertyValue.Serialize(dep));
+                row.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+            }
         }
 
         private void Ok_Click(object sender, RoutedEventArgs e)

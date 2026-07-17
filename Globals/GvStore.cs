@@ -5,7 +5,7 @@ using Lumen.Formula;
 
 namespace Lumen.Globals
 {
-    public enum GvType { Number, Text, Color, Font, List }
+    public enum GvType { Number, Text, Color, Font, List, Switch }
 
     /// <summary>类型化全局变量值。</summary>
     public class TypedValue
@@ -32,6 +32,8 @@ namespace Lumen.Globals
                         if (idx < 0 || idx >= arr.Length) idx = 0;
                         return Value.Of(arr[idx]);
                     }
+                case GvType.Switch:
+                    return Value.Of(Convert.ToBoolean(Raw ?? false));
                 default: return Value.Null();
             }
         }

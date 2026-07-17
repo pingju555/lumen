@@ -38,5 +38,30 @@ namespace Lumen
             }
             return null;
         }
+
+        /// <summary>按 8 位 Id 在页面原子树中深度优先查找部件（含容器内嵌套）。找不到返回 null。</summary>
+        public static Atom FindById(Page page, string id)
+        {
+            if (page == null || string.IsNullOrEmpty(id)) return null;
+            foreach (var a in page.Atoms)
+            {
+                var f = FindByIdIn(a, id);
+                if (f != null) return f;
+            }
+            return null;
+        }
+
+        private static Atom FindByIdIn(Atom atom, string id)
+        {
+            if (atom == null) return null;
+            if (atom.Id == id) return atom;
+            if (atom is ContainerAtom c)
+                foreach (var ch in c.Children)
+                {
+                    var f = FindByIdIn(ch, id);
+                    if (f != null) return f;
+                }
+            return null;
+        }
     }
 }

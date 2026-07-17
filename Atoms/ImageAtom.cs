@@ -18,15 +18,27 @@ namespace Lumen.Atoms
 
         private Image _img;
         private Border _border;
+        private TextBlock _placeholder;
 
         public ImageAtom() : base("Image") { Bounds = new Rect(120, 440, 200, 150); }
 
         public override UIElement Render()
         {
             _img = new Image { IsHitTestVisible = true };
+            _placeholder = new TextBlock
+            {
+                Text = Loc.T("atom.image.empty"),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Foreground = new SolidColorBrush(Colors.Gray),
+                IsHitTestVisible = false
+            };
+            var imgGrid = new Grid();
+            imgGrid.Children.Add(_img);
+            imgGrid.Children.Add(_placeholder);
             _border = new Border
             {
-                Child = _img,
+                Child = imgGrid,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalAlignment = VerticalAlignment.Stretch
             };
@@ -39,18 +51,26 @@ namespace Lumen.Atoms
 
         private void ApplyDynamic()
         {
-            if (_img == null || Ctx == null) return;
-            var src = Txt(SourceProp, Ctx);
-            if (!string.IsNullOrWhiteSpace(src) && File.Exists(src))
+            if (_img == null) return;
+            var src = Ctx != null ? Txt(SourceProp, Ctx) : SourceProp.Materialize();
+            bool hasImg = !string.IsNullOrWhiteSpace(src) && File.Exists(src);
+            if (hasImg)
             {
                 try { _img.Source = new System.Windows.Media.Imaging.BitmapImage(new System.Uri(src)); }
-                catch { /* 坏图忽略 */ }
+                catch { _img.Source = null; }
+                if (_placeholder != null) _placeholder.Visibility = Visibility.Collapsed;
+                _border.Background = ResolveBrush(BgProp, Ctx, Brushes.Transparent);
+            }
+            else
+            {
+                _img.Source = null;
+                if (_placeholder != null) _placeholder.Visibility = Visibility.Visible;
+                _border.Background = new SolidColorBrush(Color.FromRgb(0x2A, 0x2A, 0x2A));
             }
             if (System.Enum.TryParse<Stretch>(Txt(StretchProp, Ctx), true, out var st))
                 _img.Stretch = st;
             if (double.TryParse(Txt(RadiusProp, Ctx), out var r) && r > 0) _border.CornerRadius = new CornerRadius(r);
             else _border.CornerRadius = new CornerRadius(0);
-            _border.Background = ResolveBrush(BgProp, Ctx, Brushes.Transparent);
             ApplyCommon();
         }
 
@@ -78,8 +98,8 @@ namespace Lumen.Atoms
             var l = base.EditFields();
             l.Add(new EditField { Key = "source",  Label = Loc.T("atom.label.imageSource"), Kind = EditKind.File,   Hint = Loc.T("atom.hint.source") });
             l.Add(new EditField { Key = "stretch", Label = Loc.T("atom.label.stretch"), Kind = EditKind.Choice, Choices = new[] { "None", "Uniform", "Fill", "UniformToFill" } });
-            l.Add(new EditField { Key = "radius", Label = Loc.T("atom.label.radius"), Kind = EditKind.Slider, Min = 0, Max = 200 });
-            l.Add(new EditField { Key = "bg", Label = Loc.T("atom.label.bgPlaceholder"), Kind = EditKind.Color });
+            l.Add(new EditField { Key = "radius", Label = Loc.T("atom.label.radius"), Kind = EditKind.Slider, Min = 0, Max = 200, Tab = "style" });
+            l.Add(new EditField { Key = "bg", Label = Loc.T("atom.label.bgPlaceholder"), Kind = EditKind.Color, Tab = "style" });
             return l;
         }
     }

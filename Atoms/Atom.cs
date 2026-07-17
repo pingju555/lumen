@@ -11,6 +11,7 @@ using Lumen.Core;
 using Lumen.Formula;
 using Lumen.I18n;
 using Lumen.Render;
+using System.Text.RegularExpressions;
 
 namespace Lumen.Atoms
 {
@@ -123,19 +124,49 @@ namespace Lumen.Atoms
         public PropertyValue OffsetXProp = new StaticValue("0");
         public PropertyValue OffsetYProp = new StaticValue("0");
 
+        /// <summary>尺寸是否随内部内容自适应（容器=是，不强制 Width/Height）。</summary>
+        public virtual bool AutoSize => false;
+        /// <summary>位置语义是否为「中心点」（容器=是：九宫格锚点+偏移解析为中心，渲染按实际尺寸反推左上）。</summary>
+        public virtual bool CenterAnchored => false;
+        /// <summary>属性面板是否显示 宽/高 字段（容器=否，尺寸自适应）。</summary>
+        protected virtual bool ShowSizeFields => true;
+
         protected Atom(string type)
         {
             Type = type;
             Id = GenerateId();
             Name = type;
+            _allById[Id] = new WeakReference<Atom>(this);
         }
 
-        /// <summary>生成 8 字符短唯一标识（时间戳 + 随机数）。</summary>
+        /// <summary>全局 Id → 实例 弱引用注册表（供 Atom.TryGetById 按 Id 定位任意部件；实例被移除后 GC，弱引用自动失效）。</summary>
+        private static readonly Dictionary<string, WeakReference<Atom>> _allById = new();
+        /// <summary>按 8 位 Id 查找任意部件实例（含非组件原子）。</summary>
+        public static bool TryGetById(string id, out Atom atom)
+        {
+            atom = null;
+            if (string.IsNullOrEmpty(id)) return false;
+            if (_allById.TryGetValue(id, out var wr) && wr.TryGetTarget(out var a)) { atom = a; return true; }
+            return false;
+        }
+
+        /// <summary>生成 8 字符唯一标识：base62(Unix 毫秒) 零填充。62^8≈2.18e14，可撑约 6900 年；
+        /// 同毫秒顺序 +1 保证页内唯一。加载持久化时由 ReadCommonProps 用 _id 覆盖。</summary>
+        private static readonly string _b62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+        private static long _lastIdTick;
+        private static readonly object _idLock = new();
         private static string GenerateId()
         {
-            var ticks = (ulong)(DateTime.UtcNow.Ticks & 0xFFFFFFFFFFFF);
-            var rnd = (ulong)(Random.Shared.Next() & 0xFFFF);
-            return ((ticks << 16) | rnd).ToString("x8");
+            long ms = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            lock (_idLock)
+            {
+                if (ms <= _lastIdTick) ms = _lastIdTick + 1;   // 同毫秒：顺序 +1，避免碰撞
+                _lastIdTick = ms;
+            }
+            var sb = new System.Text.StringBuilder(8);
+            long v = ms;
+            for (int i = 0; i < 8; i++) { sb.Insert(0, _b62[(int)(v % 62)]); v /= 62; }
+            return sb.ToString();
         }
 
         // render 后挂到 Canvas 的根 Grid（供 Popup 定位用）
@@ -177,20 +208,51 @@ namespace Lumen.Atoms
         }
 
         /// <summary>部件级菜单的可编辑字段（基类含通用 透明度/旋转/锚点/偏移；子类按类型追加）。</summary>
-        public virtual List<EditField> EditFields() => new()
+        public virtual List<EditField> EditFields()
         {
-            new EditField { Key = "anchor",  Label = Loc.T("atom.label.anchor"),  Kind = EditKind.Choice, Category = FieldCategory.Layout, Choices = new[] { "TopLeft", "TopCenter", "TopRight", "MiddleLeft", "Center", "MiddleRight", "BottomLeft", "BottomCenter", "BottomRight" } },
-            new EditField { Key = "offsetX", Label = Loc.T("atom.label.offsetX"), Kind = EditKind.Number, Category = FieldCategory.Layout, Min = -9999, Max = 9999 },
-            new EditField { Key = "offsetY", Label = Loc.T("atom.label.offsetY"), Kind = EditKind.Number, Category = FieldCategory.Layout, Min = -9999, Max = 9999 },
-            new EditField { Key = "width",  Label = Loc.T("atom.label.width"),  Kind = EditKind.Number, Category = FieldCategory.Layout, Min = 1, Max = 4096 },
-            new EditField { Key = "height", Label = Loc.T("atom.label.height"), Kind = EditKind.Number, Category = FieldCategory.Layout, Min = 1, Max = 4096 },
-            new EditField { Key = "opacity",  Label = Loc.T("atom.label.opacity"),  Kind = EditKind.Slider, Category = FieldCategory.Layout, Min = 0, Max = 1 },
-            new EditField { Key = "rotation", Label = Loc.T("atom.label.rotation"), Kind = EditKind.Slider, Category = FieldCategory.Layout, Min = -180, Max = 180 },
-            new EditField { Key = "animEnter", Label = Loc.T("atom.label.animEnter"), Kind = EditKind.Choice, Category = FieldCategory.Animation, Choices = new[] { "None", "Fade", "Slide", "Zoom", "Drop" } },
-            new EditField { Key = "animLoop",  Label = Loc.T("atom.label.animLoop"),  Kind = EditKind.Choice, Category = FieldCategory.Animation, Choices = new[] { "None", "Pulse", "Rotate", "Blink", "Float", "Bounce" } },
-            new EditField { Key = "animEnterDur", Label = Loc.T("atom.label.animEnterDur"), Kind = EditKind.Number, Category = FieldCategory.Animation, Min = 0, Max = 10000 },
-            new EditField { Key = "animLoopDur",  Label = Loc.T("atom.label.animLoopDur"),  Kind = EditKind.Number, Category = FieldCategory.Animation, Min = 100, Max = 60000 },
-        };
+            var l = new List<EditField>
+            {
+                new EditField { Key = "anchor",  Label = Loc.T("atom.label.anchor"),  Kind = EditKind.Choice, Tab = "layout", Choices = new[] { "TopLeft", "TopCenter", "TopRight", "MiddleLeft", "Center", "MiddleRight", "BottomLeft", "BottomCenter", "BottomRight" } },
+                new EditField { Key = "offsetX", Label = Loc.T("atom.label.offsetX"), Kind = EditKind.Number, Tab = "layout", Min = -9999, Max = 9999 },
+                new EditField { Key = "offsetY", Label = Loc.T("atom.label.offsetY"), Kind = EditKind.Number, Tab = "layout", Min = -9999, Max = 9999 },
+                new EditField { Key = "opacity",  Label = Loc.T("atom.label.opacity"),  Kind = EditKind.Slider, Tab = "layout", Min = 0, Max = 1 },
+                new EditField { Key = "rotation", Label = Loc.T("atom.label.rotation"), Kind = EditKind.Slider, Tab = "layout", Min = -180, Max = 180 },
+                new EditField { Key = "animEnter", Label = Loc.T("atom.label.animEnter"), Kind = EditKind.Choice, Tab = "animation", Choices = new[] { "None", "Fade", "Slide", "Zoom", "Drop" } },
+                new EditField { Key = "animLoop",  Label = Loc.T("atom.label.animLoop"),  Kind = EditKind.Choice, Tab = "animation", Choices = new[] { "None", "Pulse", "Rotate", "Blink", "Float", "Bounce" } },
+                new EditField { Key = "animEnterDur", Label = Loc.T("atom.label.animEnterDur"), Kind = EditKind.Number, Tab = "animation", Min = 0, Max = 10000 },
+                new EditField { Key = "animLoopDur",  Label = Loc.T("atom.label.animLoopDur"),  Kind = EditKind.Number, Tab = "animation", Min = 100, Max = 60000 },
+            };
+            if (ShowSizeFields)
+            {
+                l.Add(new EditField { Key = "width",  Label = Loc.T("atom.label.width"),  Kind = EditKind.Number, Tab = "layout", Min = 1, Max = 4096 });
+                l.Add(new EditField { Key = "height", Label = Loc.T("atom.label.height"), Kind = EditKind.Number, Tab = "layout", Min = 1, Max = 4096 });
+            }
+            return l;
+        }
+
+        /// <summary>
+        /// 属性编辑器标签页清单（有序）。基类默认返回 内容/样式/布局/动画 + （可选）交互/触发器。
+        /// 子类可重写以增删/重排标签页（例如 Container 不显示触发器；Component 追加「变量」页）。
+        /// 字段通过 EditField.Tab 归属到对应 Key；交互/触发器为固定特殊页（由编辑器提供构建器）。
+        /// </summary>
+        public virtual List<TabSpec> EditTabs()
+        {
+            var list = new List<TabSpec>
+            {
+                new TabSpec { Key = "content", LocKey = "prop.tab.content" },
+                new TabSpec { Key = "style",   LocKey = "prop.tab.style" },
+                new TabSpec { Key = "layout",  LocKey = "prop.tab.layout" },
+                new TabSpec { Key = "animation", LocKey = "prop.tab.anim" },
+            };
+            if (SupportsInteraction) list.Add(new TabSpec { Key = "interaction", LocKey = "prop.tab.interaction" });
+            if (SupportsTrigger) list.Add(new TabSpec { Key = "trigger", LocKey = "prop.tab.trigger" });
+            return list;
+        }
+
+        /// <summary>是否显示「交互」标签页（点击动作）。默认 true；纯展示原子可重写返回 false 关闭。</summary>
+        public virtual bool SupportsInteraction => true;
+        /// <summary>是否显示「触发器」标签页（条件→动作）。默认 true；不需要的原子可重写返回 false 关闭。</summary>
+        public virtual bool SupportsTrigger => true;
 
         public abstract UIElement Render();
         public virtual void Update() { ApplySize(); }
@@ -297,11 +359,10 @@ namespace Lumen.Atoms
         {
             var grid = new Grid
             {
-                Width = Bounds.Width,
-                Height = Bounds.Height,
                 IsHitTestVisible = true,
                 Background = Brushes.Transparent
             };
+            if (!AutoSize) { grid.Width = Bounds.Width; grid.Height = Bounds.Height; }
             var host = new Grid
             {
                 HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -335,7 +396,7 @@ namespace Lumen.Atoms
                 var rawY = Bounds.Y + e.VerticalChange;
                 var pt = Coord.Snap(new Point(rawX, rawY));
                 Bounds = new Rect(pt.X, pt.Y, Bounds.Width, Bounds.Height);
-                if (_root != null) { Canvas.SetLeft(_root, pt.X); Canvas.SetTop(_root, pt.Y); }
+                SyncPosition();   // 容器(CenterAnchored)按中心反推左上；非容器等价于 SetLeft/Top
             };
             move.DragCompleted += (s, e) =>
             {
@@ -387,7 +448,8 @@ namespace Lumen.Atoms
             };
             // 选中 Border 包裹
             _selectionBorder = new Border { Child = grid, SnapsToDevicePixels = true };
-            var wrapper = new Grid { Width = Bounds.Width, Height = Bounds.Height, Background = Brushes.Transparent };
+            var wrapper = new Grid { Background = Brushes.Transparent };
+            if (!AutoSize) { wrapper.Width = Bounds.Width; wrapper.Height = Bounds.Height; }
             wrapper.Children.Add(_selectionBorder);
             return wrapper;
         }
@@ -515,14 +577,17 @@ namespace Lumen.Atoms
         private void UpdateTransform()
         {
             if (_root is not FrameworkElement fe) return;
+            // 容器(auto-size) 用实际测量尺寸作旋转/缩放中心；非容器用 Bounds 尺寸
+            double w = (AutoSize && fe.ActualWidth > 0) ? fe.ActualWidth : Bounds.Width;
+            double h = (AutoSize && fe.ActualHeight > 0) ? fe.ActualHeight : Bounds.Height;
             var tg = new TransformGroup();
             if (double.TryParse(Txt(RotationProp, Ctx), out var r) && r != 0)
-                tg.Children.Add(new RotateTransform(r, Bounds.Width / 2, Bounds.Height / 2));
+                tg.Children.Add(new RotateTransform(r, w / 2, h / 2));
             double s = 1.0;
             if (!EditMode && _hover && !_pressed) s = HoverScaleFactor;
             else if (_pressed) s = PressScaleFactor;
             if (s != 1.0)
-                tg.Children.Add(new ScaleTransform(s, s, Bounds.Width / 2, Bounds.Height / 2));
+                tg.Children.Add(new ScaleTransform(s, s, w / 2, h / 2));
             fe.RenderTransform = tg;
         }
 
@@ -699,26 +764,89 @@ namespace Lumen.Atoms
             if (props.TryGetValue("width", out var w)) WidthProp = w;
             if (props.TryGetValue("height", out var h)) HeightProp = h;
             ApplySize();
+            _allById[Id] = new WeakReference<Atom>(this);   // 加载/克隆后注册到全局 Id 表（覆盖构造时生成的临时 Id）
         }
 
         /// <summary>深拷贝：经注册表按 Type 建新实例，复制 Bounds + 属性三元组；Container 递归克隆子原子。</summary>
-        public virtual Atom Clone()
+        /// <summary>
+        /// 深拷贝：经注册表按 Type 建新实例，复制 Bounds + 属性三元组；Container 递归克隆子原子。
+        /// 复制即重生唯一 Id（丢弃原 _id），并把内部对所有旧 Id 的 gv("id",...) 引用一致重映射为新 Id，
+        /// 使克隆体（尤其组件）成为完全独立的实例。map 可在多个顶层原子间共享以支持交叉引用重映射。
+        /// </summary>
+        public virtual Atom Clone(Dictionary<string, string> map = null)
         {
+            map ??= new Dictionary<string, string>();
+            var oldId = Id;
             var a = AtomRegistry.Create(Type);
+            map[oldId] = a.Id;                 // 记录 旧Id → 新Id（构造时已生成新 Id）
             a.Bounds = Bounds;
-            a.SetProps(GetProps());
+            // 丢弃原 _id，保留构造器生成的唯一 Id；否则同页两同 Id 会覆盖 ComponentAtom._registry 键
+            var p = GetProps();
+            p.Remove("_id");
+            a.SetProps(p);
             if (a is ContainerAtom c && this is ContainerAtom src)
-                foreach (var ch in src.Children) c.Children.Add(ch.Clone());
+                foreach (var ch in src.Children) c.Children.Add(ch.Clone(map));
             return a;
         }
 
-        /// <summary>把 _root 同步到当前 Bounds（整体移动 / resize 后调用）。</summary>
+        /// <summary>把本原子（及容器子原子）公式里对旧 Id 的 gv("id",...) 引用重映射为新 Id；map 须在全部克隆完成后传入。</summary>
+        public virtual void RemapIds(Dictionary<string, string> map)
+        {
+            if (map == null || map.Count == 0) return;
+            var p = GetProps();
+            foreach (var kv in p)
+                if (kv.Value is FormulaValue fv)
+                    fv.Expr = RemapFormula(fv.Expr, map);
+        }
+
+        /// <summary>仅替换公式中作为 gv 作用域参数的组件 Id（gv("OLD",...) → gv("NEW",...)），避免误伤其它文本。</summary>
+        private static string RemapFormula(string expr, Dictionary<string, string> map)
+        {
+            if (string.IsNullOrEmpty(expr)) return expr;
+            foreach (var kv in map)
+            {
+                if (string.IsNullOrEmpty(kv.Key) || kv.Key == kv.Value) continue;
+                var pattern = @"(gv\(\s*[""'])(" + Regex.Escape(kv.Key) + @")(\s*[""'])";
+                expr = Regex.Replace(expr, pattern, m => m.Groups[1].Value + kv.Value + m.Groups[3].Value);
+            }
+            return expr;
+        }
+
+        /// <summary>
+        /// 把 _root 同步到当前 Bounds。非 CenterAnchored：直接左上角 = Bounds.X/Y；
+        /// CenterAnchored（容器）：Bounds.X/Y 为「中心」，按实际尺寸反推左上角（首次测量前借 LayoutUpdated 校正一次）。
+        /// </summary>
         public void SyncPosition()
         {
-            if (_root != null)
+            if (_root == null) return;
+            if (CenterAnchored) CenterPlace();
+            else { Canvas.SetLeft(_root, Bounds.X); Canvas.SetTop(_root, Bounds.Y); }
+        }
+
+        private void CenterPlace()
+        {
+            if (_root is not FrameworkElement fe || fe.ActualWidth <= 0 || fe.ActualHeight <= 0)
             {
-                Canvas.SetLeft(_root, Bounds.X);
-                Canvas.SetTop(_root, Bounds.Y);
+                // 尚未测量出实际尺寸：订阅首次布局完成做一次性校正
+                _root.LayoutUpdated -= OnLayoutUpdated;
+                _root.LayoutUpdated += OnLayoutUpdated;
+                return;
+            }
+            PlaceCenter(fe);
+        }
+
+        private void PlaceCenter(FrameworkElement fe)
+        {
+            Canvas.SetLeft(_root, Bounds.X - fe.ActualWidth / 2);
+            Canvas.SetTop(_root, Bounds.Y - fe.ActualHeight / 2);
+        }
+
+        private void OnLayoutUpdated(object sender, EventArgs e)
+        {
+            if (_root is FrameworkElement fe && fe.ActualWidth > 0 && fe.ActualHeight > 0)
+            {
+                _root.LayoutUpdated -= OnLayoutUpdated;
+                PlaceCenter(fe);
             }
         }
 
@@ -726,7 +854,7 @@ namespace Lumen.Atoms
         /// 按九宫格锚点 + XY 偏移重算实际像素位置，写入 Bounds 并同步 _root。
         /// 由宿主在 ComposeCurrentPage 时调用（传入工作区尺寸），确保窗口大小变化时原子正确重定位。
         /// </summary>
-        public void RecalcPosition(double areaW, double areaH)
+        public virtual void RecalcPosition(double areaW, double areaH)
         {
             var anchorStr = Txt(AnchorProp, Ctx).Trim();
             Enum.TryParse<NineAnchor>(anchorStr, out var anchor);

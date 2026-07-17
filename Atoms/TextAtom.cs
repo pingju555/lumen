@@ -11,7 +11,7 @@ namespace Lumen.Atoms
     /// <summary>文本原子：支持三元组（静态 / gv / $公式$ 内联）。v1 暂不含 CurvedText。</summary>
     public class TextAtom : Atom
     {
-        public PropertyValue TextProp = new StaticValue("Text");
+        public PropertyValue TextProp = new StaticValue("文本");
         public PropertyValue ColorProp = new StaticValue("#FFFFFFFF");
         public PropertyValue SizeProp = new StaticValue("24");
         public PropertyValue FontProp = new StaticValue("Segoe UI");
@@ -20,8 +20,8 @@ namespace Lumen.Atoms
         public PropertyValue LineHeightProp = new StaticValue("0");
         public PropertyValue WrapProp = new StaticValue("0");
         public PropertyValue ShadowProp = new StaticValue("0");
-        public PropertyValue BgProp = new StaticValue("#00000000");
-        public PropertyValue PaddingProp = new StaticValue("4");
+        public PropertyValue BgProp = new StaticValue("#22000000");
+        public PropertyValue PaddingProp = new StaticValue("6");
 
         private TextBlock _tb;
 
@@ -33,7 +33,6 @@ namespace Lumen.Atoms
             {
                 Foreground = Brushes.White,
                 FontSize = 24,
-                Background = new SolidColorBrush(Color.FromArgb(40, 255, 255, 255)),
                 Padding = new Thickness(4),
                 IsHitTestVisible = true
             };
@@ -105,9 +104,9 @@ namespace Lumen.Atoms
             l.Add(new EditField { Key = "align", Label = Loc.T("atom.label.align"), Kind = EditKind.Choice, Choices = new[] { "Left", "Center", "Right", "Justify" } });
             l.Add(new EditField { Key = "lineHeight", Label = Loc.T("atom.label.lineHeight"), Kind = EditKind.Slider, Min = 0, Max = 48 });
             l.Add(new EditField { Key = "wrap", Label = Loc.T("atom.label.wrap"), Kind = EditKind.Bool });
-            l.Add(new EditField { Key = "shadow", Label = Loc.T("atom.label.shadow"), Kind = EditKind.Bool });
-            l.Add(new EditField { Key = "bg", Label = Loc.T("atom.label.bgColor"), Kind = EditKind.Color });
-            l.Add(new EditField { Key = "padding", Label = Loc.T("atom.label.padding"), Kind = EditKind.Slider, Min = 0, Max = 40 });
+            l.Add(new EditField { Key = "shadow", Label = Loc.T("atom.label.shadow"), Kind = EditKind.Bool, Tab = "style" });
+            l.Add(new EditField { Key = "bg", Label = Loc.T("atom.label.bgColor"), Kind = EditKind.Color, Tab = "style" });
+            l.Add(new EditField { Key = "padding", Label = Loc.T("atom.label.padding"), Kind = EditKind.Slider, Min = 0, Max = 40, Tab = "style" });
             return l;
         }
     }

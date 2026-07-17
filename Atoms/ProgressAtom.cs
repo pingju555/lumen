@@ -19,7 +19,7 @@ namespace Lumen.Atoms
         public PropertyValue ColorProp = new StaticValue("#FF00FF88");
         public PropertyValue BgProp = new StaticValue("#00000000");
         public PropertyValue ThicknessProp = new StaticValue("0");
-        public PropertyValue ShowTextProp = new StaticValue("0");
+        public PropertyValue ShowTextProp = new StaticValue("1");
 
         private ProgressBar _bar;
         private Ellipse _ring;
@@ -146,9 +146,9 @@ namespace Lumen.Atoms
             var l = base.EditFields();
             l.Add(new EditField { Key = "value", Label = Loc.T("atom.label.value"),     Kind = EditKind.Text,   Hint = Loc.T("atom.hint.value") });
             l.Add(new EditField { Key = "kind",  Label = Loc.T("atom.label.progressKind"),     Kind = EditKind.Choice, Choices = new[] { "Bar", "Ring" } });
-            l.Add(new EditField { Key = "color", Label = Loc.T("atom.label.color"),     Kind = EditKind.Color });
-            l.Add(new EditField { Key = "bg", Label = Loc.T("atom.label.bgColor"), Kind = EditKind.Color });
-            l.Add(new EditField { Key = "thickness", Label = Loc.T("atom.label.thickness"), Kind = EditKind.Slider, Min = 0, Max = 60 });
+            l.Add(new EditField { Key = "color", Label = Loc.T("atom.label.color"),     Kind = EditKind.Color, Tab = "style" });
+            l.Add(new EditField { Key = "bg", Label = Loc.T("atom.label.bgColor"), Kind = EditKind.Color, Tab = "style" });
+            l.Add(new EditField { Key = "thickness", Label = Loc.T("atom.label.thickness"), Kind = EditKind.Slider, Min = 0, Max = 60, Tab = "style" });
             l.Add(new EditField { Key = "showText", Label = Loc.T("atom.label.showText"), Kind = EditKind.Bool });
             return l;
         }

@@ -1,7 +1,11 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Timers;
 using System.Windows;
+using System.Xml.Linq;
 using Microsoft.Win32;
 using Lumen.Native;
 
@@ -44,6 +48,18 @@ namespace Lumen.Formula
         int AppCount();
         string AppName(int idx);  // idx 0-based
         bool AppLaunch(int idx);  // idx 0-based
+
+        // ---- 调色板 / 外部数据 ----
+        uint MediaCoverColor();        // 当前媒体封面主色（无则 0）；精确提取待议
+        List<RssItem> RssFetch(string url);   // RSS 拉取（缓存 30 分钟）
+    }
+
+    /// <summary>RSS 条目。</summary>
+    public class RssItem
+    {
+        public string Title { get; set; }
+        public string Link { get; set; }
+        public string Desc { get; set; }
     }
 
     /// <summary>
@@ -70,6 +86,10 @@ namespace Lumen.Formula
         private readonly AppProvider _apps;
 
         private readonly Timer _timer;
+
+        // ---- 调色板 / 外部数据 ----
+        private static readonly HttpClient _http = new();
+        private readonly Dictionary<string, (DateTime, List<RssItem>)> _rssCache = new();
 
         public SystemDataProvider()
         {
@@ -152,6 +172,38 @@ namespace Lumen.Formula
         public int AppCount() => _apps.Count;
         public string AppName(int idx) => _apps.NameAt(idx);
         public bool AppLaunch(int idx) => _apps.Launch(idx);
+
+        // ---- 调色板 / 外部数据 ----
+        public uint MediaCoverColor()
+        {
+            // TODO: 精确封面主色提取（经 SMTC 缩略图 + 中位切分）待议；当前返回 0（bp 走默认派生）。
+            return 0;
+        }
+
+        public List<RssItem> RssFetch(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url)) return new List<RssItem>();
+            if (_rssCache.TryGetValue(url, out var c) && (DateTime.Now - c.Item1).TotalMinutes < 30) return c.Item2;
+            var items = new List<RssItem>();
+            try
+            {
+                var xml = _http.GetStringAsync(url).GetAwaiter().GetResult();
+                var doc = XDocument.Parse(xml);
+                foreach (var it in doc.Descendants("item").Concat(doc.Descendants("entry")))
+                {
+                    string title = it.Element("title")?.Value
+                        ?? it.Elements(XName.Get("title", "http://www.w3.org/2005/Atom")).FirstOrDefault()?.Value ?? "";
+                    string link = it.Element("link")?.Value
+                        ?? it.Elements(XName.Get("link", "http://www.w3.org/2005/Atom")).FirstOrDefault()?.Attribute("href")?.Value ?? "";
+                    string desc = it.Element("description")?.Value
+                        ?? it.Element("summary")?.Value ?? "";
+                    items.Add(new RssItem { Title = title, Link = link, Desc = desc });
+                }
+            }
+            catch { /* 拉取失败：返回已缓存或空，不崩溃 */ }
+            _rssCache[url] = (DateTime.Now, items);
+            return items;
+        }
 
         // ---------- 后台采样 ----------
 

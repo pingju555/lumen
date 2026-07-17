@@ -42,6 +42,7 @@
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
@@ -50,16 +51,23 @@
                     Padding="10,6" MouseLeftButtonDown="Header_MouseDown">
                 <TextBlock Text="{loc:Loc tree.header}" FontSize="13" FontWeight="Bold" Foreground="#FFFFFF"/>
             </Border>
+            <!-- 面包屑导航（钻取路径） -->
+            <Border Grid.Row="1" Background="#252526" Padding="8,4"
+                    BorderBrush="#3F3F46" BorderThickness="0,0,0,1">
+                <StackPanel x:Name="BreadcrumbPanel" Orientation="Horizontal" VerticalAlignment="Center"/>
+            </Border>
             <!-- 树 -->
-            <TreeView x:Name="AtomsTree" Grid.Row="1" Margin="4,2,4,2"
+            <TreeView x:Name="AtomsTree" Grid.Row="2" Margin="4,2,4,2"
                       SelectedItemChanged="Tree_SelectedChanged"
+                      MouseDoubleClick="Tree_MouseDoubleClick"
                       AllowDrop="True"
                       PreviewMouseMove="Tree_PreviewMouseMove"
                       Drop="Tree_Drop"
                       DragOver="Tree_DragOver"/>
             <!-- 底部工具栏 -->
-            <Border Grid.Row="2" Background="#252526" CornerRadius="0,0,6,6" Padding="6,4">
+            <Border Grid.Row="3" Background="#252526" CornerRadius="0,0,6,6" Padding="6,4">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <Button x:Name="BackBtn" Content="←" Width="28" Margin="0,0,8,0" Click="Back_Click" ToolTip="{loc:Loc tree.back}" IsEnabled="False"/>
                     <Button x:Name="AddBtn" Content="＋" Width="28" Margin="0,0,4,0" Click="Add_Click" ToolTip="{loc:Loc tree.add}"/>
                     <Button x:Name="UpBtn" Content="↑" Width="28" Margin="0,0,4,0" Click="Up_Click" ToolTip="{loc:Loc tree.up}"/>
                     <Button x:Name="DownBtn" Content="↓" Width="28" Margin="0,0,4,0" Click="Down_Click" ToolTip="{loc:Loc tree.down}"/>

@@ -466,7 +466,16 @@ namespace Lumen.Persistence
 
         public static Atom AtomFromDto(AtomDto d)
         {
-            var a = AtomRegistry.Create(d.Type ?? "Text");
+            // 兼容旧配置：旧三合一 "Container" 按 layout 映射到独立组原子
+            var type = d.Type ?? "Text";
+            if (type == "Container")
+            {
+                string layout = "Stack";
+                if (d.Props != null && d.Props.TryGetValue("layout", out var lv))
+                    layout = (lv ?? "Stack").ToLowerInvariant();
+                type = layout == "overlap" ? "Overlap" : layout == "series" ? "Series" : "Stack";
+            }
+            var a = AtomRegistry.Create(type);
             double w = d.W <= 0 ? 100 : d.W, h = d.H <= 0 ? 40 : d.H;
             a.Bounds = new Rect(d.X, d.Y, w, h);
             if (d.Props != null)

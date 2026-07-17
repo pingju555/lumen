@@ -17,7 +17,7 @@ namespace Lumen.Atoms
         public PropertyValue FontProp = new StaticValue("Segoe MDL2 Assets");
         public PropertyValue SizeProp = new StaticValue("48");
         public PropertyValue ColorProp = new StaticValue("#FFFFFFFF");
-        public PropertyValue BgProp = new StaticValue("#00000000");
+        public PropertyValue BgProp = new StaticValue("#22000000");
         public PropertyValue ShadowProp = new StaticValue("0");
 
         private TextBlock _tb;
@@ -105,8 +105,8 @@ namespace Lumen.Atoms
             l.Add(new EditField { Key = "font",  Label = Loc.T("atom.label.font"),     Kind = EditKind.Choice, Choices = new[] { "Segoe MDL2 Assets", "Segoe UI Symbol", "Segoe UI Emoji", "Arial" } });
             l.Add(new EditField { Key = "size",  Label = Loc.T("atom.label.fontSize"), Kind = EditKind.Number, Min = 1, Max = 400 });
             l.Add(new EditField { Key = "color", Label = Loc.T("atom.label.color"),     Kind = EditKind.Color });
-            l.Add(new EditField { Key = "bg", Label = Loc.T("atom.label.bgCircle"), Kind = EditKind.Color });
-            l.Add(new EditField { Key = "shadow", Label = Loc.T("atom.label.shadow"), Kind = EditKind.Bool });
+            l.Add(new EditField { Key = "bg", Label = Loc.T("atom.label.bgCircle"), Kind = EditKind.Color, Tab = "style" });
+            l.Add(new EditField { Key = "shadow", Label = Loc.T("atom.label.shadow"), Kind = EditKind.Bool, Tab = "style" });
             return l;
         }
     }

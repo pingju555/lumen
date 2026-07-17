@@ -74,7 +74,7 @@ namespace Lumen
         // 双模式：默认桌面模式（静态展示）；编辑模式开启全部交互（拖拽/缩放/右键编辑/添加原子等）
         private bool _editMode = false;
 
-        // P6-03: 层管理窗口 + 属性编辑窗口（编辑模式弹出，退出模式自动关闭）
+        // P6-03: 部件树窗口 + 属性编辑窗口（编辑模式弹出，退出模式自动关闭）
         private TreeWindow _treeWindow;
         private PropWindow _propWindow;
         private Window _gvWindow;
@@ -136,7 +136,10 @@ namespace Lumen
             AtomRegistry.Register("Icon", () => new IconAtom());
             AtomRegistry.Register("Image", () => new ImageAtom());
             AtomRegistry.Register("Progress", () => new ProgressAtom());
-            AtomRegistry.Register("Container", () => new ContainerAtom());
+            AtomRegistry.Register("Stack", () => new StackGroupAtom());
+            AtomRegistry.Register("Overlap", () => new OverlapGroupAtom());
+            AtomRegistry.Register("Series", () => new SeriesGroupAtom());
+            AtomRegistry.Register("Component", () => new ComponentAtom());
 
             // 部件级右键菜单工厂（P3 补充）：右键任意原子弹出其专属菜单
             // 双模式：仅编辑模式返回部件菜单，桌面模式返回 null（点击落到全局菜单）。
@@ -339,7 +342,8 @@ namespace Lumen
         private static readonly (string Type, string Label)[] AtomTypes =
         {
             ("Text", "文本"), ("Shape", "形状"), ("Icon", "图标"),
-            ("Image", "图片"), ("Progress", "进度条"), ("Container", "容器")
+            ("Image", "图片"), ("Progress", "进度条"),
+            ("Stack", "堆叠组"), ("Overlap", "重叠组"), ("Series", "序列组"), ("Component", "组件")
         };
 
         /// <summary>新增原子到当前页：创建 → 默认尺寸居中吸附 → 加入页 → 重组 → 保存 → 立即打开属性编辑器便于配置。</summary>
@@ -353,6 +357,19 @@ namespace Lumen
             // 用锚点+偏移定位到居中：默认锚点 TopLeft，偏移=居中位置
             double ox = (Width - d.Width) / 2;
             double oy = (Height - d.Height) / 2;
+            // 自动错开：若与现有原子重叠，则 +30/+30 偏移避免糊在一起
+            for (int iter = 0; iter < 300; iter++)
+            {
+                bool overlap = false;
+                var cand = new Rect(ox, oy, d.Width, d.Height);
+                foreach (var ex in page.Atoms)
+                {
+                    if (ex == atom) continue;
+                    if (cand.IntersectsWith(ex.Bounds)) { overlap = true; break; }
+                }
+                if (!overlap) break;
+                ox += 30; oy += 30;
+            }
             atom.OffsetXProp = new StaticValue(ox.ToString("0"));
             atom.OffsetYProp = new StaticValue(oy.ToString("0"));
             page.Atoms.Add(atom);
@@ -368,7 +385,10 @@ namespace Lumen
             "Icon" => new Rect(0, 0, 80, 80),
             "Image" => new Rect(0, 0, 200, 150),
             "Progress" => new Rect(0, 0, 240, 16),
-            "Container" => new Rect(0, 0, 200, 200),
+            "Stack" => new Rect(0, 0, 300, 200),
+            "Overlap" => new Rect(0, 0, 400, 300),
+            "Series" => new Rect(0, 0, 360, 160),
+            "Component" => new Rect(0, 0, 0, 0),   // 自包含容器：尺寸随内部部件自适应，不框定
             _ => new Rect(0, 0, 160, 120)
         };
 
@@ -398,14 +418,14 @@ namespace Lumen
         // ---------- 全局右键菜单（P3 补充） ----------
         // 覆盖层默认吸收输入；右键任意处弹出统一操作菜单，鼠标即可完成全部常用操作（对应现有热键）。
         private ContextMenu _menu;
-        private MenuItem _mnuToggleMode, _mnuPageGridBg, _mnuPresets, _mnuGv, _mnuTree, _mnuProfile;
+        private MenuItem _mnuToggleMode, _mnuPageGridBg, _mnuGv, _mnuTree, _mnuProfile;
         private Separator _mnuSep;
 
         private void BuildContextMenu()
         {
             _menu = new ContextMenu();
             _menu.Opened += (s, e) => RefreshMenu();
-            foreach (var it in MakeGlobalItems(out _mnuToggleMode, out _mnuPageGridBg, out _mnuProfile, out _mnuPresets, out _mnuGv, out _mnuTree, out _, out _mnuSep))
+            foreach (var it in MakeGlobalItems(out _mnuToggleMode, out _mnuPageGridBg, out _mnuProfile, out _mnuGv, out _mnuTree, out _, out _mnuSep))
                 _menu.Items.Add(it);
             RootGrid.ContextMenu = _menu;
         }
@@ -414,7 +434,7 @@ namespace Lumen
         /// 每次调用都新建实例，因此可分别挂到 _menu 与部件右键菜单（WPF 的 MenuItem 不能同时属于两个父级）。</summary>
         private UIElement[] MakeGlobalItems(
             out MenuItem toggleMode, out MenuItem pageGridBg, out MenuItem profile,
-            out MenuItem presets, out MenuItem gv, out MenuItem tree, out MenuItem exit, out Separator sep)
+            out MenuItem gv, out MenuItem tree, out MenuItem exit, out Separator sep)
         {
             toggleMode = new MenuItem { Header = Loc.T("menu.editMode") };
             toggleMode.Click += (s, e) => SetEditMode(!_editMode);
@@ -424,7 +444,6 @@ namespace Lumen
             programSettings.Click += (s, e) => ShowSettings();
             profile = new MenuItem { Header = Loc.T("menu.profile") };
             profile.Click += (s, e) => OpenProfileWindow();
-            presets = new MenuItem { Header = Loc.T("menu.applyPreset") };
             gv = new MenuItem { Header = Loc.T("menu.variables") };
             gv.Click += (s, e) => ManageVariables();
             tree = new MenuItem { Header = Loc.T("menu.atomTree") };
@@ -432,53 +451,18 @@ namespace Lumen
             exit = new MenuItem { Header = Loc.T("menu.exit"), InputGestureText = "Ctrl+Alt+Q" };
             exit.Click += (s, e) => Application.Current.Shutdown();
             sep = new Separator();
-            return new UIElement[] { toggleMode, pageGridBg, programSettings, profile, presets, gv, tree, sep, exit };
+            return new UIElement[] { toggleMode, pageGridBg, programSettings, profile, gv, tree, sep, exit };
         }
 
-        /// <summary>菜单每次打开时刷新：模式切换项文案 + 编辑态专属项显隐 + 动态列表。</summary>
+        /// <summary>菜单每次打开时刷新：模式切换项文案 + 编辑态专属项显隐。</summary>
         private void RefreshMenu()
         {
             _mnuToggleMode.Header = _editMode ? Loc.T("menu.desktopMode") : Loc.T("menu.editMode");
             var editOnly = _editMode ? Visibility.Visible : Visibility.Collapsed;
             _mnuPageGridBg.Visibility = editOnly;
-            _mnuPresets.Visibility = editOnly;
             _mnuGv.Visibility = editOnly;
             _mnuTree.Visibility = editOnly;
             _mnuSep.Visibility = editOnly;
-
-            if (!_editMode) return; // 桌面模式无需构建动态项
-
-            // 预设：内置 + 用户自定义（标注种类）
-            PopulatePresets(_mnuPresets);
-        }
-
-        /// <summary>填充「套用预设」子菜单（内置 + 用户，标注种类 + 另存场景）。空白区菜单与部件菜单共用。</summary>
-        private void PopulatePresets(MenuItem presets)
-        {
-            presets.Items.Clear();
-            foreach (var p in PresetLibrary.Builtins)
-            {
-                // 显示本地化预设名，但套用仍按规范 Name（SwitchPreset 动作里写死的 Day/Night 等不受影响）
-                var key = "preset." + p.Name.ToLower();
-                var disp = Loc.T(key);
-                if (disp == key) disp = p.Name; // 无对应翻译则回退规范名
-                var tag = p.Kind == PresetKind.Scene ? Loc.T("menu.presetScene") : Loc.T("menu.presetAppearance");
-                var mi = new MenuItem { Header = disp + tag };
-                mi.Click += (s, e) => ApplyPresetByName(p.Name);
-                presets.Items.Add(mi);
-            }
-            foreach (var p in PresetLibrary.User)
-            {
-                var name = p.Name;
-                var tag = p.Kind == PresetKind.Scene ? Loc.T("menu.presetScene") : Loc.T("menu.presetAppearance");
-                var mi = new MenuItem { Header = name + Loc.T("menu.presetCustom") + tag };
-                mi.Click += (s, e) => ApplyPresetByName(name);
-                presets.Items.Add(mi);
-            }
-            presets.Items.Add(new Separator());
-            var saveScene = new MenuItem { Header = Loc.T("menu.saveScenePreset") };
-            saveScene.Click += (s, e) => SaveCurrentAsScenePreset();
-            presets.Items.Add(saveScene);
         }
 
         internal void ToggleGridShow()
@@ -789,11 +773,10 @@ namespace Lumen
             m.Items.Add(new Separator());
 
             // 复用全局菜单功能：被全屏部件挡住、右键点不到空白区时，右键部件也能退出编辑模式 / 打开各窗口
-            var global = MakeGlobalItems(out var tgl, out var pg, out var pr, out var pre, out var gv2, out var tr2, out var ex2, out var sep2);
+            var global = MakeGlobalItems(out var tgl, out var pg, out var pr, out var gv2, out var tr2, out var ex2, out var sep2);
             var editOnly = _editMode ? Visibility.Visible : Visibility.Collapsed;
-            pg.Visibility = editOnly; pre.Visibility = editOnly; gv2.Visibility = editOnly; tr2.Visibility = editOnly; sep2.Visibility = editOnly;
+            pg.Visibility = editOnly; gv2.Visibility = editOnly; tr2.Visibility = editOnly; sep2.Visibility = editOnly;
             tgl.Header = _editMode ? Loc.T("menu.desktopMode") : Loc.T("menu.editMode");
-            PopulatePresets(pre);
             foreach (var it in global) m.Items.Add(it);
             return m;
         }
@@ -922,7 +905,9 @@ namespace Lumen
             var page = _pages.CurrentPage; if (page == null) return;
             var list = AtomTree.FindParentList(page, atom);
             if (list == null) return;
-            var clone = atom.Clone();
+            var map = new Dictionary<string, string>();
+            var clone = atom.Clone(map);
+            clone.RemapIds(map);
             clone.Bounds = new Rect(atom.Bounds.X + 24, atom.Bounds.Y + 24, atom.Bounds.Width, atom.Bounds.Height);
             int idx = list.IndexOf(atom);
             list.Insert(idx + 1, clone);
