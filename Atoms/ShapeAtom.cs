@@ -59,7 +59,7 @@ namespace Lumen.Atoms
             Shape s = kind.Trim().ToLowerInvariant() switch
             {
                 "ellipse" => new Ellipse(),
-                "line" => new Line { X1 = 0, Y1 = 0, X2 = Bounds.Width, Y2 = Bounds.Height },
+                "line" => new Rectangle(),
                 "roundrect" => new Rectangle { RadiusX = 14, RadiusY = 14 },
                 _ => new Rectangle()
             };
@@ -93,21 +93,22 @@ namespace Lumen.Atoms
             }
             bool shadow = Txt(ShadowProp, Ctx).Trim() == "1";
             var tex = ParseTexture(Txt(TextureProp, Ctx));
-            bool isLine = _gloss is Line;
+            bool isLine = IsLine();
 
-            if (tex == ShapeTexture.None || isLine)
+            if (tex == ShapeTexture.None)
             {
-                // 无纹理 / 线（线无填充面积）：_shape 直接承载外观
+                // 无纹理：_shape 直接承载外观（线模式下线色=填充、无描边轮廓）
                 _gloss.Visibility = Visibility.Collapsed;
                 _shape.Fill = fillBrush;
-                _shape.Stroke = strokeBrush;
-                _shape.StrokeThickness = w;
+                if (isLine) { _shape.Stroke = Brushes.Transparent; _shape.StrokeThickness = 0; }
+                else { _shape.Stroke = strokeBrush; _shape.StrokeThickness = w; }
                 _shape.Effect = shadow ? MakeShadow() : null;
             }
             else
             {
                 // 纹理模式：_shape 退为透明背衬，视觉完全由 _gloss 承载。
                 // 这样半透纹理(Glass/Frosted/Liquid/虹彩)能真正透出桌面，不透明纹理(Wood/Marble/...)照常显示。
+                // 线模式：_gloss 是一根细矩形，同样能吃全部纹理（霓虹线/木纹线…）。
                 _shape.Fill = Brushes.Transparent;
                 _shape.Stroke = Brushes.Transparent;
                 _shape.StrokeThickness = 0;
@@ -151,7 +152,21 @@ namespace Lumen.Atoms
                     gr.RadiusY = r;
                 }
             }
+            ApplyLineSize(w);
             ApplyCommon();
+        }
+
+        private bool IsLine()
+            => KindProp.Resolve(Ctx).AsStr().Trim().Equals("line", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>线模式用细矩形实现：粗细=描边宽度(StrokeW)，长边=对应 Bounds 维度；配合「旋转」属性可得到斜线/对角线。</summary>
+        private void ApplyLineSize(double thickness)
+        {
+            if (!IsLine()) return;
+            double t = Math.Max(1, thickness);
+            bool horiz = Bounds.Width >= Bounds.Height;
+            if (_shape != null) { _shape.Width = horiz ? Bounds.Width : t; _shape.Height = horiz ? t : Bounds.Height; }
+            if (_gloss != null) { _gloss.Width = horiz ? Bounds.Width : t; _gloss.Height = horiz ? t : Bounds.Height; }
         }
 
         private static ShapeTexture ParseTexture(string s)
@@ -306,19 +321,16 @@ namespace Lumen.Atoms
             return new DrawingBrush(dg) { TileMode = TileMode.Tile, Viewport = new Rect(0,0,8,8), ViewportUnits = BrushMappingMode.Absolute };
         }
 
-        /// <summary>resize 后同步图形尺寸（含线端坐标）。</summary>
+        /// <summary>resize 后同步图形尺寸（线模式自动按描边宽度收细为细矩形）。</summary>
         protected override void SyncSize()
         {
             if (_shape == null) return;
             _shape.Width = Bounds.Width;
             _shape.Height = Bounds.Height;
-            if (_shape is Line ln) { ln.X2 = Bounds.Width; ln.Y2 = Bounds.Height; }
-            if (_gloss != null)
-            {
-                _gloss.Width = Bounds.Width;
-                _gloss.Height = Bounds.Height;
-                if (_gloss is Line gln) { gln.X2 = Bounds.Width; gln.Y2 = Bounds.Height; }
-            }
+            if (_gloss != null) { _gloss.Width = Bounds.Width; _gloss.Height = Bounds.Height; }
+            double sw = 0;
+            if (double.TryParse(Txt(StrokeWProp, Ctx), out var v)) sw = v;
+            ApplyLineSize(sw);
         }
 
         public override System.Collections.Generic.Dictionary<string, PropertyValue> GetProps()
@@ -350,7 +362,7 @@ namespace Lumen.Atoms
             l.Add(new EditField { Key = "kind",    Label = Loc.T("atom.label.shape"),     Kind = EditKind.Choice, Choices = new[] { "Rect", "RoundRect", "Ellipse", "Line" }, ChoiceLocPrefix = "atom.shapeKind." });
             l.Add(new EditField { Key = "fill",    Label = Loc.T("atom.label.fill"),     Kind = EditKind.Color });
             l.Add(new EditField { Key = "stroke",  Label = Loc.T("atom.label.stroke"),     Kind = EditKind.Color });
-            l.Add(new EditField { Key = "strokeW", Label = Loc.T("atom.label.strokeWidth"), Kind = EditKind.Number, Min = 0, Max = 60 });
+            l.Add(new EditField { Key = "strokeW", Label = Loc.T("atom.label.strokeWidth"), Kind = EditKind.Number, Min = 0, Max = 60, Hint = Loc.T("atom.hint.strokeW") });
             l.Add(new EditField { Key = "radius", Label = Loc.T("atom.label.radius"), Kind = EditKind.Slider, Min = 0, Max = 120 });
             l.Add(new EditField { Key = "dash", Label = Loc.T("atom.label.dash"), Kind = EditKind.Choice, Choices = new[] { "Solid", "Dash", "Dot" }, ChoiceLocPrefix = "atom.dash." });
             l.Add(new EditField { Key = "shadow", Label = Loc.T("atom.label.shadow"), Kind = EditKind.Bool });

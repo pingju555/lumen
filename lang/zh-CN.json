@@ -342,5 +342,6 @@
   "atom.dash.Solid": "实线",
   "atom.dash.Dash": "虚线",
   "atom.dash.Dot": "点线",
-  "atom.hint.textureColor": "填充色仅影响 塑料感/金属/霓虹 三种质感；毛玻璃/玻璃感/液态/虹彩为透明显色，木纹/大理石/碳纤维/纸张/布纹为固定配色。"
+  "atom.hint.textureColor": "填充色仅影响 塑料感/金属/霓虹 三种质感；毛玻璃/玻璃感/液态/虹彩为透明显色，木纹/大理石/碳纤维/纸张/布纹为固定配色。",
+  "atom.hint.strokeW": "描边宽度；线模式下此值即线的粗细。"
 }
