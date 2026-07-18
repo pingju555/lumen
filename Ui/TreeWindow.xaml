@@ -1,79 +1,41 @@
-<Window x:Class="Lumen.Ui.TreeWindow"
+<ui:ChromeWindow x:Class="Lumen.Ui.TreeWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:loc="clr-namespace:Lumen.I18n"
-        Title="{loc:Loc tree.windowTitle}" Height="420" Width="260"
-        Background="#1E1E1E" Foreground="#E6E6E6"
-        WindowStyle="None" AllowsTransparency="True" Topmost="True"
-        ShowInTaskbar="False"
+        xmlns:ui="clr-namespace:Lumen.Ui"
+        x:Name="Win"
+        TitleText="{loc:Loc tree.header}"
+        Height="420" Width="260"
+        WindowStyle="None" AllowsTransparency="True"
         ResizeMode="CanResize" WindowStartupLocation="Manual">
-    <Window.Resources>
-        <Style TargetType="TreeView">
-            <Setter Property="Background" Value="#252526"/>
-            <Setter Property="Foreground" Value="#F0F0F0"/>
-            <Setter Property="BorderBrush" Value="#3F3F46"/>
-            <Setter Property="BorderThickness" Value="1"/>
-        </Style>
-        <Style TargetType="TreeViewItem">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#F0F0F0"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="4,2"/>
-            <Setter Property="IsExpanded" Value="True"/>
-            <Style.Triggers>
-                <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="#094771"/>
-                    <Setter Property="Foreground" Value="#FFFFFF"/>
-                </Trigger>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#2D2D30"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-        <Style TargetType="Button">
-            <Setter Property="Background" Value="#3A3D41"/>
-            <Setter Property="Foreground" Value="#F0F0F0"/>
-            <Setter Property="BorderBrush" Value="#3F3F46"/>
-            <Setter Property="Padding" Value="8,3"/>
-            <Setter Property="FontSize" Value="12"/>
-        </Style>
-    </Window.Resources>
-    <Border BorderBrush="#3F3F46" BorderThickness="1" CornerRadius="6">
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-            <!-- 标题栏（可拖拽） -->
-            <Border Grid.Row="0" Background="#2D2D30" CornerRadius="6,6,0,0"
-                    Padding="10,6" MouseLeftButtonDown="Header_MouseDown">
-                <TextBlock Text="{loc:Loc tree.header}" FontSize="13" FontWeight="Bold" Foreground="#FFFFFF"/>
-            </Border>
-            <!-- 面包屑导航（钻取路径） -->
-            <Border Grid.Row="1" Background="#252526" Padding="8,4"
-                    BorderBrush="#3F3F46" BorderThickness="0,0,0,1">
-                <StackPanel x:Name="BreadcrumbPanel" Orientation="Horizontal" VerticalAlignment="Center"/>
-            </Border>
-            <!-- 树 -->
-            <TreeView x:Name="AtomsTree" Grid.Row="2" Margin="4,2,4,2"
-                      SelectedItemChanged="Tree_SelectedChanged"
-                      MouseDoubleClick="Tree_MouseDoubleClick"
-                      AllowDrop="True"
-                      PreviewMouseMove="Tree_PreviewMouseMove"
-                      Drop="Tree_Drop"
-                      DragOver="Tree_DragOver"/>
-            <!-- 底部工具栏 -->
-            <Border Grid.Row="3" Background="#252526" CornerRadius="0,0,6,6" Padding="6,4">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                    <Button x:Name="BackBtn" Content="←" Width="28" Margin="0,0,8,0" Click="Back_Click" ToolTip="{loc:Loc tree.back}" IsEnabled="False"/>
-                    <Button x:Name="AddBtn" Content="＋" Width="28" Margin="0,0,4,0" Click="Add_Click" ToolTip="{loc:Loc tree.add}"/>
-                    <Button x:Name="UpBtn" Content="↑" Width="28" Margin="0,0,4,0" Click="Up_Click" ToolTip="{loc:Loc tree.up}"/>
-                    <Button x:Name="DownBtn" Content="↓" Width="28" Margin="0,0,4,0" Click="Down_Click" ToolTip="{loc:Loc tree.down}"/>
-                    <Button x:Name="DelBtn" Content="✕" Width="28" Click="Delete_Click" ToolTip="{loc:Loc tree.delete}"/>
-                </StackPanel>
-            </Border>
-        </Grid>
-    </Border>
-</Window>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>   <!-- 面包屑 -->
+            <RowDefinition Height="*"/>       <!-- TreeView -->
+        </Grid.RowDefinitions>
+        <!-- 面包屑导航 -->
+        <Border Grid.Row="0" Background="{StaticResource BgSunken}" Padding="8,4"
+                BorderBrush="{StaticResource BorderDefault}" BorderThickness="0,0,0,1">
+            <StackPanel x:Name="BreadcrumbPanel" Orientation="Horizontal" VerticalAlignment="Center"/>
+        </Border>
+        <!-- 树 -->
+        <TreeView x:Name="AtomsTree" Grid.Row="1" Margin="4,2,4,2"
+                  SelectedItemChanged="Tree_SelectedChanged"
+                  MouseDoubleClick="Tree_MouseDoubleClick"
+                  AllowDrop="True"
+                  PreviewMouseMove="Tree_PreviewMouseMove"
+                  Drop="Tree_Drop"
+                  DragOver="Tree_DragOver"/>
+    </Grid>
+
+    <ui:ChromeWindow.FooterContent>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+            <Button x:Name="BackBtn" Content="←" Width="28" Margin="0,0,8,0" Click="Back_Click" ToolTip="{loc:Loc tree.back}" IsEnabled="False"/>
+            <Button x:Name="AddBtn" Content="＋" Width="28" Margin="0,0,4,0" Click="Add_Click" ToolTip="{loc:Loc tree.add}"/>
+            <Button x:Name="UpBtn" Content="↑" Width="28" Margin="0,0,4,0" Click="Up_Click" ToolTip="{loc:Loc tree.up}"/>
+            <Button x:Name="DownBtn" Content="↓" Width="28" Margin="0,0,4,0" Click="Down_Click" ToolTip="{loc:Loc tree.down}"/>
+            <Button x:Name="DelBtn" Content="✕" Width="28" Click="Delete_Click" ToolTip="{loc:Loc tree.delete}"/>
+        </StackPanel>
+    </ui:ChromeWindow.FooterContent>
+</ui:ChromeWindow>

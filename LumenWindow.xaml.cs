@@ -51,6 +51,8 @@ namespace Lumen
         private CanvasLayer _canvasLayer;
         private AtomHost _atomHost;
         private GvStore _gv;
+        /// <summary>全局变量存储（供动作系统 SetVar/ReadFile 写回）。</summary>
+        internal GvStore Gv => _gv;
         private EvalContext _ctx;
 
         /// <summary>当前唯一主窗口实例（供 ActionRunner 等静态回调拿到 host）。</summary>
@@ -74,12 +76,10 @@ namespace Lumen
         // 双模式：默认桌面模式（静态展示）；编辑模式开启全部交互（拖拽/缩放/右键编辑/添加原子等）
         private bool _editMode = false;
 
-        // P6-03: 部件树窗口 + 属性编辑窗口（编辑模式弹出，退出模式自动关闭）
-        private TreeWindow _treeWindow;
+        // P6-03: 合并编辑窗口（项目树 + 属性编辑 + 页面设置）
         private PropWindow _propWindow;
         private Window _gvWindow;
         private Atom _selectedAtom;
-        private bool _suppressTreeSync;
 
         public LumenWindow()
         {
@@ -220,7 +220,7 @@ namespace Lumen
             Coord.GridSize = page.GridSize;
             Coord.SnapEnabled = page.ShowGrid; // 网格关闭=画布模式，拖拽自由移动
             Coord.AreaW = Width; Coord.AreaH = Height; // 注入工作区尺寸：拖拽松手反解偏移用
-            _gridLayer.Enabled = page.ShowGrid;
+            _gridLayer.Enabled = _editMode && page.ShowGrid; // 网格仅编辑模式显示（对齐辅助），桌面模式保持干净
             _stack.Recompose();
             // 当前页背景全透明 → 找第一页（主页）背景作底，避免 画布 页全空
             var bg = page.Background;
@@ -260,12 +260,9 @@ namespace Lumen
             // 选中新原子
             atom.Select();
             _selectedAtom = atom;
-            // 同步到 TreeWindow 和 PropWindow（禁止树回环）
-            _suppressTreeSync = true;
-            if (_treeWindow != null && _treeWindow.IsVisible)
-                _treeWindow.SelectAtom(atom);
-            _suppressTreeSync = false;
+            // 同步到 PropWindow（合并窗口）
             if (_propWindow != null && _propWindow.IsVisible)
+                _propWindow.SelectAtom(atom);
                 _propWindow.LoadAtom(atom);
         }
 
@@ -276,8 +273,8 @@ namespace Lumen
                 _selectedAtom.Deselect();
                 _selectedAtom = null;
             }
-            if (_treeWindow != null && _treeWindow.IsVisible)
-                _treeWindow.SelectAtom(null);
+            if (_propWindow != null && _propWindow.IsVisible)
+                _propWindow.SelectAtom(null);
             if (_propWindow != null && _propWindow.IsVisible)
                 _propWindow.LoadAtom(null);
         }
@@ -471,7 +468,7 @@ namespace Lumen
             page.ShowGrid = !page.ShowGrid; ComposeCurrentPage(); SaveAll();
         }
 
-        private void SetGridGear(double g)
+        internal void SetGridGear(double g)
         {
             var page = _pages.CurrentPage; if (page == null) return;
             page.GridSize = g; ComposeCurrentPage(); SaveAll();
@@ -553,6 +550,9 @@ namespace Lumen
             ForEachAtomDeep(_pages.CurrentPage?.Atoms, a => a.ApplyEditMode());
             StatusHud.Visibility = edit ? Visibility.Visible : Visibility.Collapsed;
             RulerLayer.Visibility = edit ? Visibility.Visible : Visibility.Collapsed;
+            // 网格仅编辑模式作为对齐辅助显示；桌面模式（最终呈现）保持干净
+            _gridLayer.Enabled = edit && (_pages.CurrentPage?.ShowGrid ?? false);
+            _stack.Recompose();
             RefreshMenu();
             UpdateHud();
 
@@ -562,50 +562,35 @@ namespace Lumen
                 ShowEditorWindows();
             }
             else
+            {
                 CloseEditorWindows();
+            }
             UpdateTrayIcon();
         }
 
-        /// <summary>打开（或创建）TreeWindow + PropWindow，并建立联动。</summary>
+        /// <summary>打开合并窗口：PropWindow（项目树 + 属性编辑 + 页面设置）。</summary>
         private void ShowEditorWindows()
         {
-            if (_treeWindow == null || !_treeWindow.IsVisible)
-            {
-                _treeWindow = new TreeWindow();
-                _treeWindow.LoadPage(_pages.CurrentPage, _pages);
-                _treeWindow.Closed += (s, e) => ClosePropWindow();
-                _treeWindow.Show();
-                _treeWindow.Owner = null;
-                // 定位到合适位置（覆盖层屏幕区域的右侧偏上；覆盖层无有效位置则用屏幕中间偏右）
-                _treeWindow.Left = Left > 0 ? Left + Width + 10 : SystemParameters.WorkArea.Width * 0.6;
-                _treeWindow.Top = Top > 0 ? Top + 40 : SystemParameters.WorkArea.Height * 0.2;
-            }
-            else
-            {
-                _treeWindow.LoadPage(_pages.CurrentPage, _pages);
-                _treeWindow.Show();
-            }
-
             if (_propWindow == null || !_propWindow.IsVisible)
             {
                 _propWindow = new PropWindow();
                 _propWindow.InitContext(_gv, _ctx);
                 _propWindow.SetCallbacks(
-                    onPreview: () => { _selectedAtom?.Update(); },  // 预览：实时刷新
-                    onStructural: () => ComposeCurrentPage()  // 结构性变更：重组
+                    onPreview: () => { _selectedAtom?.Update(); },
+                    onStructural: () => ComposeCurrentPage()
                 );
                 _propWindow.SetOnApply(() => SaveAll());
+                _propWindow.SetLumenOwner(this);
+                _propWindow.LoadPage(_pages.CurrentPage);
                 _propWindow.Closed += (s, e) => { _propWindow = null; };
-                // 定位到树窗口右侧
-                _propWindow.Show();
                 _propWindow.Owner = null;
+                _propWindow.Show();
             }
-
-            // 树选中 → 加载属性；结构变更 → 重组画面 + 保存
-            _treeWindow.SelectedAtomChanged -= OnTreeSelectionChanged;
-            _treeWindow.SelectedAtomChanged += OnTreeSelectionChanged;
-            _treeWindow.StructureChanged -= OnTreeStructureChanged;
-            _treeWindow.StructureChanged += OnTreeStructureChanged;
+            else
+            {
+                _propWindow.LoadPage(_pages.CurrentPage);
+                _propWindow.Show();
+            }
         }
 
         private void OnTreeStructureChanged()
@@ -616,16 +601,14 @@ namespace Lumen
 
         private void SyncTreeWindow()
         {
-            if (_treeWindow != null && _treeWindow.IsVisible)
-                _treeWindow.LoadPage(_pages.CurrentPage, _pages);
+            if (_propWindow != null && _propWindow.IsVisible)
+                _propWindow.LoadPage(_pages.CurrentPage);
         }
 
         private void OnTreeSelectionChanged(Atom atom)
         {
-            if (_suppressTreeSync) return;
             if (atom != null)
             {
-                // 树选中的原子也触发视觉选中
                 if (_selectedAtom != null && _selectedAtom != atom)
                     _selectedAtom.Deselect();
                 atom.Select();
@@ -643,7 +626,6 @@ namespace Lumen
         private void CloseEditorWindows()
         {
             ClosePropWindow();
-            if (_treeWindow != null) { _treeWindow.Close(); _treeWindow = null; }
         }
 
         private void ClosePropWindow()
@@ -651,10 +633,12 @@ namespace Lumen
             if (_propWindow != null) { _propWindow.Close(); _propWindow = null; }
         }
 
-        // ---------- 供 ActionRunner 调用的内部动作入口（P5 行为系统） ----------
+        // ---------- 供 ActionRunner / 属性面板 调用的内部入口（P5 行为系统） ----------
         internal void RequestToggleEditMode() => SetEditMode(!_editMode);
         internal void NextPage() => _pages.Next();
         internal void PrevPage() => _pages.Prev();
+        /// <summary>当前配置档的页面总数（供属性面板「切换页面」动作的参数下拉）。</summary>
+        public int PageCount => _pages.Pages.Count;
 
         /// <summary>打开页面/网格/背景 统一设置窗口。</summary>
         private void OpenPageGridBgWindow()
@@ -812,16 +796,15 @@ namespace Lumen
             else
             {
                 // 保证窗口可见
-                if (_treeWindow == null || !_treeWindow.IsVisible)
+                if (_propWindow == null || !_propWindow.IsVisible)
                     ShowEditorWindows();
             }
 
-            // 在树中选中目标原子（PropWindow 自动切换）
-            if (_treeWindow != null && _treeWindow.IsVisible)
+            // PropWindow 中选中原子
+            if (_propWindow != null && _propWindow.IsVisible)
             {
-                _treeWindow.SelectAtom(atom);
+                _propWindow.SelectAtom(atom);
             }
-            // 后备：直接加载到 PropWindow
             else if (_propWindow != null && _propWindow.IsVisible)
             {
                 _propWindow.LoadAtom(atom);

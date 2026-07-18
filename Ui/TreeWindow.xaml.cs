@@ -17,7 +17,7 @@ namespace Lumen.Ui
     /// 支持选择联动、增删排序、拖拽重排。
     /// 进入编辑模式时弹出，退出编辑模式时关闭。
     /// </summary>
-    public partial class TreeWindow : Window
+    public partial class TreeWindow : ChromeWindow
     {
         private Lumen.Pages.Page _page;
         private PageManager _pageManager;
@@ -282,11 +282,7 @@ namespace Lumen.Ui
             return null;
         }
 
-        private void Header_MouseDown(object sender, MouseButtonEventArgs e)
-        {
-            if (e.ChangedButton == MouseButton.Left)
-                DragMove();
-        }
+        // ---- Drag 由 ChromeWindow 模板全权处理 ----
 
         /// <summary>右键重命名弹窗。</summary>
         private void RenameAtom(Atom atom)
@@ -487,7 +483,7 @@ namespace Lumen.Ui
         }
 
         // TODO: v1 用简单弹窗选类型，后续可改成窗口内下拉
-        private class AtomTypePicker : Window
+        internal class AtomTypePicker : Window
         {
             public string SelectedType { get; private set; }
             private static readonly string[] Types = { "Text", "Shape", "Icon", "Image", "Progress", "Stack", "Overlap", "Series" };

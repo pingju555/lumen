@@ -44,15 +44,18 @@ namespace Lumen.Engine
         private void Tick()
         {
             foreach (var a in _atoms)
-                if (UsesClock(a)) MarkDirty(a);
+                if (UsesClock(a) || UsesMedia(a)) MarkDirty(a);
             Flush();
             // 触发器评估（P5）：每个 tick 对全部原子（含容器子原子）检查条件，成立自动触发动作。
             // 独立于脏标记，确保即使原子自身属性未变、仅条件数据变化（如电量/媒体状态）也能响应。
+            // 动画条件重估 + 进度动画 tick
             foreach (var a in _atoms)
             {
-                a.EvaluateTriggers();
+                a.EvaluateFlows();
+                a.TickAnimation();
+                a.TickProgressAnimation();
                 if (a is ContainerAtom c)
-                    foreach (var ch in c.Children) ch.EvaluateTriggers();
+                    foreach (var ch in c.Children) { ch.EvaluateFlows(); ch.TickAnimation(); ch.TickProgressAnimation(); }
             }
         }
 
@@ -63,6 +66,17 @@ namespace Lumen.Engine
                 var m = kv.Value.Materialize();
                 if (m.Contains("$") && (m.Contains("df") || m.Contains("tf") || m.Contains("ts") || m.Contains("tu")))
                     return true;
+            }
+            return false;
+        }
+
+        // 媒体依赖：公式含 mi( 的原子需每拍重算，媒体状态变化（换歌/封面）才能即时反映
+        private static bool UsesMedia(Atom a)
+        {
+            foreach (var kv in a.GetProps())
+            {
+                var m = kv.Value.Materialize();
+                if (m.Contains("$") && m.Contains("mi(")) return true;
             }
             return false;
         }

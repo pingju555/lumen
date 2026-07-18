@@ -1,106 +1,518 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using Lumen.Atoms;
+using Lumen.Core;
 using Lumen.Formula;
 using Lumen.Globals;
 using Lumen.I18n;
+using Page = Lumen.Pages.Page;
 
 namespace Lumen.Ui
 {
-    /// <summary>
-    /// 属性编辑窗口（P6-03，替代 EditAtom/CreateEditorWindow）：
-    /// 嵌入 PropertyEditorPanel，隐藏 OK/Cancel 按钮，由本窗口提供「应用」按钮。
-    /// 与 TreeWindow 双向联动：树选中原子后加载其属性。
-    /// </summary>
+    /// <summary>编辑主控窗口：扁平 TabControl（项目 + 属性 + 网格 + 背景）。</summary>
     public partial class PropWindow : Window
     {
+        // ---- 外部注入 ----
         private GvStore _gv;
         private EvalContext _ctx;
-        private Atom _currentAtom;
-        private PropertyEditorPanel _panel;
         private Action _onApply;
         private Action _externalPreview;
         private Action _externalStructural;
-
-        /// <summary>可选的树节点切换确认回调（外部由 TreeWindow 注入）。</summary>
         public Func<Atom, bool> BeforeAtomSwitch { get; set; }
+
+        // ---- 当前状态 ----
+        private Page _page;
+        private LumenWindow _lumenOwner;
+        private PropertyEditorPanel _propPanel;
+
+        // ---- 树 ----
+        private readonly Stack<ContainerAtom> _navStack = new Stack<ContainerAtom>();
+        private Page _loadedPage;
+        private int _selectedIndex = -1;
+        private Point _dragStart;
+        private TreeView AtomsTree;
+        private StackPanel BreadcrumbPanel;
+        private Button BackBtn;
+
+        // ---- 页面设置 ----
+        private bool _loading;
+        private CheckBox ShowGridCb;
+        private ComboBox GridSizeCb;
+        private RadioButton RbSolid, RbImage;
+        private TextBox ColorTb, ImageTb;
+        private Border Swatch;
+        private Button PickColorBtn, BrowseBtn, ApplyBgBtn;
 
         public PropWindow()
         {
             InitializeComponent();
+            Left = 60; Top = 80;
+            // 鼠标按下窗口任意 Tab 栏拖拽
+            MouseLeftButtonDown += (s, e) => { if (e.ChangedButton == MouseButton.Left) DragMove(); };
         }
 
-        /// <summary>初始化上下文（外部注入）。</summary>
-        public void InitContext(GvStore gv, EvalContext ctx)
+        public void InitContext(GvStore gv, EvalContext ctx) { _gv = gv; _ctx = ctx; }
+        public void SetCallbacks(Action onPreview, Action onStructural) { _externalPreview = onPreview; _externalStructural = onStructural; }
+        public void SetOnApply(Action onApply) => _onApply = onApply;
+        public void SetLumenOwner(LumenWindow owner) => _lumenOwner = owner;
+        public void ApplyCurrent() => _propPanel?.Apply();
+
+        // ========== 主入口 ==========
+
+        public void LoadPage(Page page)
         {
-            _gv = gv;
-            _ctx = ctx;
+            _page = page;
+            bool changed = !ReferenceEquals(page, _loadedPage);
+            _loadedPage = page;
+            if (changed) { _navStack.Clear(); _selectedIndex = -1; }
+            RebuildTabs();
         }
 
-        /// <summary>加载指定原子到编辑器。</summary>
+        /// <summary>外部选中原子（从桌面右键触发时调用）。</summary>
+        public void SelectAtom(Atom atom)
+        {
+            if (atom == null) return;
+            _selectedIndex = -1;
+            var list = CurrentList();
+            if (list != null && !list.Contains(atom)) { _navStack.Clear(); list = CurrentList(); }
+            _selectedIndex = list?.IndexOf(atom) ?? -1;
+            LoadAtom(atom);
+            RebuildTabs();
+            // 切换到属性 Tab
+            if (MainTabs.Items.Count > 1) MainTabs.SelectedIndex = 1;
+        }
+
+        // ========== Tab 构建 ==========
+
+        private void RebuildTabs()
+        {
+            MainTabs.Items.Clear();
+
+            // 1) 项目 Tab（部件树 + 数量统计）
+            int total = CountItems();
+            var treeHeader = total > 0 ? $"{Loc.T("propwin.tree")} ({total})" : Loc.T("propwin.tree");
+            var treeTab = BuildTreeTab();
+            MainTabs.Items.Add(new TabItem { Header = treeHeader, Content = treeTab });
+
+            // 2) 属性 Tab（PropertyEditorPanel 构建）
+            if (_propPanel != null)
+            {
+                foreach (var kv in _propPanel.TabContents)
+                {
+                    MainTabs.Items.Add(new TabItem
+                    {
+                        Header = Loc.T(kv.Value.LocKey),
+                        Content = kv.Value.Content
+                    });
+                }
+            }
+
+            // 3) 网格 Tab
+            MainTabs.Items.Add(new TabItem { Header = Loc.T("pagebg.tab.grid"), Content = BuildGridTab() });
+
+            // 4) 背景 Tab
+            MainTabs.Items.Add(new TabItem { Header = Loc.T("pagebg.tab.bg"), Content = BuildBgTab() });
+
+            if (MainTabs.Items.Count > 0) MainTabs.SelectedIndex = 0;
+            RebuildTree();
+        }
+
+        private int CountItems()
+        {
+            if (_page == null) return 0;
+            int count = 0;
+            void Walk(IEnumerable<Atom> atoms) { if (atoms == null) return; foreach (var a in atoms) { count++; if (a is ContainerAtom c) Walk(c.Children); } }
+            Walk(_page.Atoms);
+            return count;
+        }
+
+        // ========== 树 ==========
+
+        private UIElement BuildTreeTab()
+        {
+            var grid = new Grid();
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            var breadcrumbBar = new Border { Background = Theme.BgSunken, Padding = new Thickness(8, 4, 8, 4), BorderBrush = Theme.BorderDefault, BorderThickness = new Thickness(0, 0, 0, 1) };
+            BreadcrumbPanel = new StackPanel { Orientation = Orientation.Horizontal };
+            breadcrumbBar.Child = BreadcrumbPanel;
+            Grid.SetRow(breadcrumbBar, 0);
+            grid.Children.Add(breadcrumbBar);
+
+            AtomsTree = new TreeView
+            {
+                Background = Theme.BgSunken, Foreground = Theme.TextSecondary, BorderThickness = new Thickness(0),
+                AllowDrop = true
+            };
+            AtomsTree.SelectedItemChanged += Tree_SelectedChanged;
+            AtomsTree.MouseDoubleClick += Tree_MouseDoubleClick;
+            AtomsTree.PreviewMouseMove += Tree_PreviewMouseMove;
+            AtomsTree.Drop += Tree_Drop;
+            AtomsTree.DragOver += Tree_DragOver;
+            Grid.SetRow(AtomsTree, 1);
+            grid.Children.Add(AtomsTree);
+
+            var toolbar = new Border { Background = Theme.BgSunken, Padding = new Thickness(6, 4, 6, 4), BorderBrush = Theme.BorderDefault, BorderThickness = new Thickness(0, 1, 0, 0) };
+            var tbPanel = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center };
+            BackBtn = MakeToolBtn("←", "tree.back", Back_Click);
+            var addBtn = MakeToolBtn("＋", "tree.add", Add_Click);
+            var upBtn = MakeToolBtn("↑", "tree.up", Up_Click);
+            var downBtn = MakeToolBtn("↓", "tree.down", Down_Click);
+            var delBtn = MakeToolBtn("✕", "tree.delete", Delete_Click);
+            tbPanel.Children.Add(BackBtn); tbPanel.Children.Add(addBtn);
+            tbPanel.Children.Add(upBtn); tbPanel.Children.Add(downBtn); tbPanel.Children.Add(delBtn);
+            toolbar.Child = tbPanel;
+            Grid.SetRow(toolbar, 2);
+            grid.Children.Add(toolbar);
+            return grid;
+        }
+
+        private static Button MakeToolBtn(string text, string locKey, RoutedEventHandler click)
+        {
+            var b = new Button { Content = text, Width = 24, Height = 22, FontSize = 11, Padding = new Thickness(2), Margin = new Thickness(0, 0, 4, 0) };
+            b.Click += click;
+            b.ToolTip = Loc.T(locKey);
+            return b;
+        }
+
+        private void RebuildTree()
+        {
+            if (AtomsTree == null) return;
+            AtomsTree.Items.Clear();
+            BuildBreadcrumb();
+            UpdateBackBtn();
+            if (_page == null) return;
+            var list = CurrentList();
+            for (int i = 0; i < list.Count; i++)
+                AtomsTree.Items.Add(BuildNode(list[i], i == list.Count - 1));
+        }
+
+        private IList<Atom> CurrentList() => _navStack.Count == 0 ? _page?.Atoms : _navStack.Peek().Children;
+
+        private TreeViewItem BuildNode(Atom atom, bool isLast)
+        {
+            var item = new TreeViewItem { Header = BuildItemHeader(atom), Tag = atom, IsExpanded = false };
+            var m = new ContextMenu();
+            var rename = new MenuItem { Header = Loc.T("tree.rename") };
+            rename.Click += (s, e) => RenameAtom(atom);
+            m.Items.Add(rename);
+            var copyId = new MenuItem { Header = Loc.T("tree.copyId") };
+            copyId.Click += (s, e) => Clipboard.SetText(atom.Id);
+            m.Items.Add(copyId);
+            item.ContextMenu = m;
+            return item;
+        }
+
+        /// <summary>KLWP 风格条目：色块+名称+子描述+□+容器箭头。</summary>
+        private FrameworkElement BuildItemHeader(Atom atom)
+        {
+            var grid = new Grid { Margin = new Thickness(4, 6, 4, 6) };
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });  // 色块
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });  // 文本
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });  // □
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });  // 箭头
+
+            var icon = new Border { Width = 24, Height = 24, CornerRadius = new CornerRadius(4),
+                Background = GetTypeIconBrush(atom), Margin = new Thickness(0, 0, 10, 0),
+                VerticalAlignment = VerticalAlignment.Center };
+            Grid.SetColumn(icon, 0); grid.Children.Add(icon);
+
+            var sp = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            sp.Children.Add(new TextBlock { Text = atom.Name, FontSize = 12, Foreground = Theme.TextPrimary });
+            sp.Children.Add(new TextBlock { Text = FormatSubLabel(atom), FontSize = 10, Foreground = Theme.TextTertiary, Margin = new Thickness(0, 1, 0, 0) });
+            Grid.SetColumn(sp, 1); grid.Children.Add(sp);
+
+            var fbox = new Border { Width = 14, Height = 14, BorderBrush = Theme.BorderSoft, BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(2), Background = Brushes.Transparent, Margin = new Thickness(8, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center, ToolTip = Loc.T("prop.formula.unbound") };
+            Grid.SetColumn(fbox, 2); grid.Children.Add(fbox);
+
+            if (atom is ContainerAtom)
+            {
+                var arrow = new TextBlock { Text = "▸", FontSize = 10, Foreground = Theme.TextTertiary,
+                    Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+                Grid.SetColumn(arrow, 3); grid.Children.Add(arrow);
+            }
+
+            return grid;
+        }
+
+        /// <summary>KLWP 风格子描述（参数概要）。</summary>
+        private string FormatSubLabel(Atom atom)
+        {
+            var p = atom.GetProps();
+            if (atom is ContainerAtom c)
+                return $"{(atom is StackGroupAtom ? "Stack" : atom is OverlapGroupAtom ? "Overlap" : atom is SeriesGroupAtom ? "Series" : "Group")} · {c.Children.Count} items";
+            // 简单取关键属性
+            var parts = new List<string>();
+            if (p.TryGetValue("width", out var w) && double.TryParse(PropertyValue.Serialize(w), out var wv) && wv > 0) parts.Add($"W {wv:0}");
+            if (p.TryGetValue("height", out var h) && double.TryParse(PropertyValue.Serialize(h), out var hv) && hv > 0) parts.Add($"H {hv:0}");
+            if (p.TryGetValue("fill", out var f)) parts.Add(PropertyValue.Serialize(f));
+            if (p.TryGetValue("text", out var t)) parts.Add(PropertyValue.Serialize(t).Substring(0, Math.Min(20, PropertyValue.Serialize(t).Length)));
+            return string.Join(" · ", parts);
+        }
+
+        private static Brush GetTypeIconBrush(Atom atom)
+        {
+            var type = atom.Type?.ToLowerInvariant() ?? "";
+            if (type == "text") return new SolidColorBrush(Color.FromRgb(0x6A, 0xD1, 0x7A));   // 绿
+            if (type == "shape") return new SolidColorBrush(Color.FromRgb(0x4A, 0x8F, 0xE7));  // 蓝
+            if (type == "icon") return new SolidColorBrush(Color.FromRgb(0xE0, 0x78, 0x66));   // 橙
+            if (type == "image") return new SolidColorBrush(Color.FromRgb(0xE0, 0xB9, 0x66));  // 黄
+            if (type == "progress") return new SolidColorBrush(Color.FromRgb(0x9C, 0x6A, 0xD1));// 紫
+            if (type == "stack") return new SolidColorBrush(Color.FromRgb(0x6A, 0xB7, 0xD1));  // 青
+            if (type == "overlap") return new SolidColorBrush(Color.FromRgb(0xE0, 0x66, 0x9C));// 粉
+            if (type == "series") return new SolidColorBrush(Color.FromRgb(0xD1, 0x9C, 0x6A)); // 棕
+            return new SolidColorBrush(Color.FromRgb(0x9A, 0x9A, 0x9A));
+        }
+
+        private static string FormatLabel(Atom atom)
+        {
+            if (atom is ContainerAtom c)
+            {
+                string kind = Loc.T("atom.type." + c.Type.ToLowerInvariant());
+                return $"{c.Name} [{kind}] ({c.Children.Count})";
+            }
+            return atom.Name;
+        }
+
+        private void BuildBreadcrumb()
+        {
+            if (BreadcrumbPanel == null) return;
+            BreadcrumbPanel.Children.Clear();
+            
+            // 页面名称（根）
+            var pageName = _page?.Name ?? Loc.T("tree.none");
+            var home = new TextBlock { Text = pageName, Foreground = _navStack.Count == 0 ? Brushes.White : SystemColors.GrayTextBrush, Cursor = Cursors.Hand, FontSize = 11 };
+            if (_navStack.Count > 0) home.MouseLeftButtonDown += (s, e) => GoToDepth(0);
+            BreadcrumbPanel.Children.Add(home);
+
+            // 容器导航路径
+            int depth = 1;
+            foreach (var c in _navStack.Reverse())
+            {
+                BreadcrumbPanel.Children.Add(new TextBlock { Text = " › ", FontSize = 11, Foreground = SystemColors.GrayTextBrush });
+                var crumb = new TextBlock { Text = c.Name, FontSize = 11, Foreground = depth == _navStack.Count ? Brushes.White : SystemColors.GrayTextBrush, Cursor = Cursors.Hand };
+                int d = depth;
+                if (depth < _navStack.Count) crumb.MouseLeftButtonDown += (s, e) => GoToDepth(d);
+                BreadcrumbPanel.Children.Add(crumb);
+                depth++;
+            }
+
+            // 当前层级的部件数
+            var list = CurrentList();
+            if (list != null)
+            {
+                BreadcrumbPanel.Children.Add(new TextBlock { Text = $"  ({list.Count})", FontSize = 10, Foreground = SystemColors.GrayTextBrush, Margin = new Thickness(8, 0, 0, 0) });
+            }
+        }
+
+        private void UpdateBackBtn() { if (BackBtn != null) BackBtn.IsEnabled = _navStack.Count > 0; }
+        private void GoToDepth(int depth) { while (_navStack.Count > depth) _navStack.Pop(); RebuildTree(); }
+
+        // ---- 树事件 ----
+
+        private void Tree_SelectedChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+        {
+            if (e.NewValue is TreeViewItem tvi && tvi.Tag is Atom atom)
+                LoadAtom(atom);
+        }
+
+        private void Tree_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            var tvi = FindTreeViewItem(e.OriginalSource as DependencyObject);
+            if (tvi?.Tag is ContainerAtom c) { _navStack.Push(c); RebuildTree(); }
+        }
+
+        private static TreeViewItem FindTreeViewItem(DependencyObject source)
+        {
+            while (source != null && !(source is TreeViewItem)) source = VisualTreeHelper.GetParent(source);
+            return source as TreeViewItem;
+        }
+
+        private void Tree_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (e.LeftButton != MouseButtonState.Pressed) return;
+            var pos = e.GetPosition(AtomsTree);
+            if (Math.Abs(pos.X - _dragStart.X) < 5 && Math.Abs(pos.Y - _dragStart.Y) < 5) return;
+            if (AtomsTree.SelectedItem is TreeViewItem tvi && tvi.Tag is Atom atom)
+                DragDrop.DoDragDrop(AtomsTree, atom, DragDropEffects.Move);
+        }
+
+        private void Tree_DragOver(object sender, DragEventArgs e) { e.Effects = e.Data.GetDataPresent(typeof(Atom)) ? DragDropEffects.Move : DragDropEffects.None; e.Handled = true; }
+
+        private void Tree_Drop(object sender, DragEventArgs e)
+        {
+            if (!e.Data.GetDataPresent(typeof(Atom)) || _page == null) return;
+            var dragged = (Atom)e.Data.GetData(typeof(Atom));
+            var targetTvi = FindTreeViewItem(e.OriginalSource as DependencyObject);
+            var target = targetTvi?.Tag as Atom;
+            var srcList = _page != null ? AtomTree.FindParentList(_page, dragged) : null;
+            if (srcList == null) return;
+            int srcIdx = srcList.IndexOf(dragged);
+            IList<Atom> dstList = CurrentList();
+            if (target is ContainerAtom tc) { tc.Children.Add(dragged); }
+            else if (target != null) { int dstIdx = dstList.IndexOf(target); dstList.Insert(dstIdx >= srcIdx ? dstIdx + 1 : dstIdx, dragged); }
+            else { dstList.Add(dragged); }
+            if (srcList != dstList || srcIdx >= 0) { if (srcIdx >= 0) srcList.RemoveAt(srcIdx); }
+            _externalStructural?.Invoke();
+            RebuildTree();
+        }
+
+        // ---- 工具栏按钮 ----
+
+        private void Back_Click(object sender, RoutedEventArgs e) => GoToDepth(_navStack.Count - 1);
+
+        private void Add_Click(object sender, RoutedEventArgs e)
+        {
+            var type = AddComponentPanel.ShowPick(this);
+            if (type == null) return;
+            var atom = AtomRegistry.Create(type);
+            if (atom == null) return;
+            CurrentList()?.Add(atom);
+            _externalStructural?.Invoke();
+            RebuildTree();
+        }
+
+        private void Up_Click(object sender, RoutedEventArgs e)
+        {
+            var list = CurrentList(); if (list == null || _selectedIndex <= 0) return;
+            var atom = list[_selectedIndex]; list.RemoveAt(_selectedIndex);
+            list.Insert(_selectedIndex - 1, atom); _selectedIndex--;
+            _externalStructural?.Invoke(); RebuildTree();
+        }
+
+        private void Down_Click(object sender, RoutedEventArgs e)
+        {
+            var list = CurrentList(); if (list == null || _selectedIndex < 0 || _selectedIndex >= list.Count - 1) return;
+            var atom = list[_selectedIndex]; list.RemoveAt(_selectedIndex);
+            list.Insert(_selectedIndex + 1, atom); _selectedIndex++;
+            _externalStructural?.Invoke(); RebuildTree();
+        }
+
+        private void Delete_Click(object sender, RoutedEventArgs e)
+        {
+            if (_page == null) return;
+            var list = AtomTree.FindParentList(_page, _currentAtom);
+            if (list != null) { list.Remove(_currentAtom); _currentAtom = null; _externalStructural?.Invoke(); RebuildTree(); }
+        }
+
+        private void RenameAtom(Atom atom)
+        {
+            var result = InputBox.Show(this, Loc.T("tree.renameTitle"), atom.Name, atom.Name);
+            if (result != null) { atom.Name = result; _externalStructural?.Invoke(); RebuildTree(); }
+        }
+
+        // ========== 属性编辑 ==========
+
+        private Atom _currentAtom;
+
         public void LoadAtom(Atom atom)
         {
             _currentAtom = atom;
-            TitleTb.Text = Loc.T("propwin.editing", atom?.Type ?? Loc.T("propwin.unknown"));
+            if (atom == null) return;
+            Title = Loc.T("propwin.editing", atom.Type);
 
-            // 隐藏占位、显示面板
-            Placeholder.Visibility = atom == null ? Visibility.Visible : Visibility.Collapsed;
-            PanelHost.Visibility = atom == null ? Visibility.Collapsed : Visibility.Visible;
-
-            if (atom == null)
-            {
-                PanelHost.Content = null;
-                _panel = null;
-                return;
-            }
-
-            _panel = new PropertyEditorPanel(
-                atom: atom,
-                onPreview: () => { _externalPreview?.Invoke(); },
-                onStructuralChange: () => { _externalStructural?.Invoke(); },
-                onCommit: () => { },
-                onCancel: () => { },
-                gv: _gv,
-                onOpenGvManager: () => { },
-                ctx: _ctx
-            );
-            _panel.HideButtons();
-            PanelHost.Content = _panel;
+            _propPanel = new PropertyEditorPanel(atom: atom,
+                onPreview: () => _externalPreview?.Invoke(),
+                onStructuralChange: () => _externalStructural?.Invoke(),
+                onCommit: () => { }, onCancel: () => { }, gv: _gv,
+                onOpenGvManager: () => { }, ctx: _ctx);
+            // 重建属性 Tab
+            RebuildTabs();
+            // 选中第一个属性 Tab
+            if (MainTabs.Items.Count > 1) MainTabs.SelectedIndex = 1;
         }
 
-        /// <summary>获取当前面板，用于外部触发 Apply。</summary>
-        public void ApplyCurrent()
+        // ========== 页面设置 ==========
+
+        private UIElement BuildGridTab()
         {
-            _panel?.Apply();
+            var sp = new StackPanel { Margin = new Thickness(8) };
+            ShowGridCb = new CheckBox { Content = Loc.T("pagebg.showGrid"), Margin = new Thickness(0, 0, 0, 12), IsChecked = _page?.ShowGrid ?? false };
+            ShowGridCb.Checked += GridShow_Changed;
+            ShowGridCb.Unchecked += GridShow_Changed;
+            sp.Children.Add(ShowGridCb);
+            sp.Children.Add(new TextBlock { Text = Loc.T("pagebg.gridSpacing"), Margin = new Thickness(0, 0, 0, 4), Foreground = Theme.TextTertiary });
+            GridSizeCb = new ComboBox { Width = 160, HorizontalAlignment = HorizontalAlignment.Left, IsEditable = true };
+            foreach (var v in new[] { "10", "20", "30", "40", "50", "100" }) GridSizeCb.Items.Add(v);
+            GridSizeCb.SelectedItem = _page?.GridSize.ToString("0") ?? "20";
+            GridSizeCb.SelectionChanged += GridSize_Changed;
+            sp.Children.Add(GridSizeCb);
+            return sp;
         }
 
-        private void Apply_Click(object sender, RoutedEventArgs e)
+        private UIElement BuildBgTab()
         {
-            _panel?.Apply();
-            _onApply?.Invoke();
+            var sv = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+            var sp = new StackPanel { Margin = new Thickness(8) };
+            var modeRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
+            RbSolid = new RadioButton { Content = Loc.T("settings.bg.solid"), GroupName = "Bg", IsChecked = true, Margin = new Thickness(0, 0, 16, 0) };
+            RbSolid.Checked += BgMode_Changed;
+            RbImage = new RadioButton { Content = Loc.T("settings.bg.image"), GroupName = "Bg" };
+            RbImage.Checked += BgMode_Changed;
+            modeRow.Children.Add(RbSolid); modeRow.Children.Add(RbImage);
+            sp.Children.Add(modeRow);
+
+            ColorTb = new TextBox { Width = 160, Text = "#FF4488FF", Background = Theme.BgSurface, Foreground = Theme.TextSecondary, BorderBrush = Theme.BorderDefault };
+            Swatch = new Border { Width = 28, Height = 24, Margin = new Thickness(8, 0, 0, 0), BorderBrush = Theme.BorderSoft, BorderThickness = new Thickness(1) };
+            PickColorBtn = new Button { Content = Loc.T("pagebg.palette"), Margin = new Thickness(8, 0, 0, 0) };
+            PickColorBtn.Click += PickColor_Click;
+            var colorRow = new StackPanel { Orientation = Orientation.Horizontal };
+            colorRow.Children.Add(ColorTb); colorRow.Children.Add(Swatch); colorRow.Children.Add(PickColorBtn);
+            sp.Children.Add(colorRow);
+
+            ImageTb = new TextBox { Width = 240, Background = Theme.BgSurface, Foreground = Theme.TextSecondary, BorderBrush = Theme.BorderDefault, Visibility = Visibility.Collapsed };
+            BrowseBtn = new Button { Content = Loc.T("settings.browse"), Margin = new Thickness(8, 0, 0, 0), Visibility = Visibility.Collapsed };
+            BrowseBtn.Click += Browse_Click;
+            var imgRow = new StackPanel { Orientation = Orientation.Horizontal };
+            imgRow.Children.Add(ImageTb); imgRow.Children.Add(BrowseBtn);
+            sp.Children.Add(imgRow);
+
+            ApplyBgBtn = new Button { Content = Loc.T("settings.applyBg"), Width = 100, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 12, 0, 0) };
+            ApplyBgBtn.Click += ApplyBg_Click;
+            sp.Children.Add(ApplyBgBtn);
+            sv.Content = sp;
+            return sv;
         }
 
-        /// <summary>设置外部回调（由 LumenWindow 注入）。</summary>
-        public void SetCallbacks(Action onPreview, Action onStructural)
+        private void LoadPageSettings()
         {
-            _externalPreview = onPreview;
-            _externalStructural = onStructural;
+            if (_page == null) return;
+            _loading = true;
+            if (ShowGridCb != null) ShowGridCb.IsChecked = _page.ShowGrid;
+            if (GridSizeCb != null) GridSizeCb.SelectedItem = _page.GridSize.ToString("0");
+            _loading = false;
         }
 
-        /// <summary>设置应用后回调。</summary>
-        public void SetOnApply(Action onApply) => _onApply = onApply;
-
-        private void Clear_Click(object sender, RoutedEventArgs e)
+        private void GridShow_Changed(object sender, RoutedEventArgs e)
         {
-            // 清空选中（外部调用 LoadAtom(null) 触发 UI 更新）
-            LoadAtom(null);
+            if (_loading || _page == null) return;
+            _page.ShowGrid = ShowGridCb?.IsChecked ?? false;
+            _lumenOwner?.ToggleGridShow();
         }
 
-        private void Header_MouseDown(object sender, MouseButtonEventArgs e)
+        private void GridSize_Changed(object sender, SelectionChangedEventArgs e)
         {
-            if (e.ChangedButton == MouseButton.Left)
-                DragMove();
+            if (_loading || _page == null) return;
+            if (GridSizeCb.SelectedItem is string s && double.TryParse(s, out var g))
+                _lumenOwner?.SetGridGear(g);
         }
+
+        private void BgMode_Changed(object sender, RoutedEventArgs e) { }
+        private void PickColor_Click(object sender, RoutedEventArgs e) { }
+        private void Browse_Click(object sender, RoutedEventArgs e) { }
+        private void ApplyBg_Click(object sender, RoutedEventArgs e) { }
+
+        private void Clear_Click(object sender, RoutedEventArgs e) => LoadAtom(null);
+        private void Cancel_Click(object sender, RoutedEventArgs e) => Close();
+        private void Apply_Click(object sender, RoutedEventArgs e) { _propPanel?.Apply(); _onApply?.Invoke(); }
     }
 }

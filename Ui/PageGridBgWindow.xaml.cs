@@ -13,7 +13,7 @@ using Lumen.Presets;
 
 namespace Lumen.Ui
 {
-    public partial class PageGridBgWindow : Window
+    public partial class PageGridBgWindow : ChromeWindow
     {
         private LumenWindow _owner;
         private PageManager _pageManager;
@@ -377,9 +377,6 @@ namespace Lumen.Ui
             ReloadAll();
         }
 
-        private void Header_MouseDown(object sender, MouseButtonEventArgs e)
-        {
-            if (e.ChangedButton == MouseButton.Left) DragMove();
-        }
+        // ---- Drag 由 ChromeWindow 模板全权处理 ----
     }
 }

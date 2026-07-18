@@ -13,7 +13,7 @@ namespace Lumen.Ui
     /// 配置档（Profile）管理器：列出所有 profile，支持新建 / 切换 / 重命名 / 删除 / 导出 / 导入。
     /// 一个 profile = 全部页面（含部件）+ 每页设置 + 全局变量 + 用户预设，整体可切换、可独立导出分享。
     /// </summary>
-    public partial class ProfileWindow : Window
+    public partial class ProfileWindow : ChromeWindow
     {
         private LumenWindow _owner;
 

@@ -3,96 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:loc="clr-namespace:Lumen.I18n"
              Background="Transparent">
-    <UserControl.Resources>
-        <Style TargetType="ComboBox">
-            <Setter Property="Background" Value="#2D2D30"/>
-            <Setter Property="Foreground" Value="#F0F0F0"/>
-            <Setter Property="BorderBrush" Value="#3F3F46"/>
-            <Setter Property="ItemContainerStyle">
-                <Setter.Value>
-                    <Style TargetType="ComboBoxItem">
-                        <Setter Property="Background" Value="#2D2D30"/>
-                        <Setter Property="Foreground" Value="#F0F0F0"/>
-                        <Setter Property="Padding" Value="6,4"/>
-                        <Style.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#094771"/>
-                            </Trigger>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Background" Value="#007ACC"/>
-                                <Setter Property="Foreground" Value="#FFFFFF"/>
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                </Setter.Value>
-            </Setter>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ComboBox">
-                        <Grid>
-                            <ToggleButton x:Name="Toggle" IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
-                                            Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                                            Foreground="{TemplateBinding Foreground}"
-                                            Content="{TemplateBinding SelectionBoxItem}"
-                                            Focusable="False" Padding="4,3">
-                                <ToggleButton.Style>
-                                    <Style TargetType="ToggleButton">
-                                        <Setter Property="Background" Value="#2D2D30"/>
-                                        <Setter Property="BorderBrush" Value="#3F3F46"/>
-                                        <Setter Property="BorderThickness" Value="1"/>
-                                        <Setter Property="Template">
-                                            <Setter.Value>
-                                                <ControlTemplate TargetType="ToggleButton">
-                                                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                                                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="2"
-                                                            SnapsToDevicePixels="True">
-                                                        <Grid TextElement.Foreground="#F0F0F0">
-                                                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" Margin="4,0"
-                                                                                TextElement.Foreground="#F0F0F0"/>
-                                                            <Path x:Name="Arrow" Data="M 0 0 L 4 4 L 8 0 Z" Fill="#AAAAAA"
-                                                                  HorizontalAlignment="Right" Margin="0,0,6,0"
-                                                                  Width="8" Height="4" Stretch="Uniform"
-                                                                  VerticalAlignment="Center"/>
-                                                        </Grid>
-                                                    </Border>
-                                                    <ControlTemplate.Triggers>
-                                                        <Trigger Property="IsChecked" Value="True">
-                                                            <Setter TargetName="Arrow" Property="RenderTransform">
-                                                                <Setter.Value>
-                                                                    <ScaleTransform ScaleY="-1" CenterX="4" CenterY="2"/>
-                                                                </Setter.Value>
-                                                            </Setter>
-                                                        </Trigger>
-                                                    </ControlTemplate.Triggers>
-                                                </ControlTemplate>
-                                            </Setter.Value>
-                                        </Setter>
-                                    </Style>
-                                </ToggleButton.Style>
-                            </ToggleButton>
-                            <Popup x:Name="Popup" IsOpen="{Binding IsChecked, ElementName=Toggle}"
-                                   AllowsTransparency="True" Placement="Bottom" PlacementTarget="{Binding ElementName=Toggle}"
-                                   StaysOpen="False" MaxHeight="300">
-                                <Border Background="#252526" BorderBrush="#3F3F46" BorderThickness="1" CornerRadius="2"
-                                        SnapsToDevicePixels="True" Padding="4">
-                                    <ScrollViewer>
-                                        <ItemsPresenter/>
-                                    </ScrollViewer>
-                                </Border>
-                            </Popup>
-                        </Grid>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="HasItems" Value="False">
-                                <Setter TargetName="Popup" Property="Visibility" Value="Collapsed"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-    </UserControl.Resources>
-    <Border Background="#1E1E1E" BorderBrush="#3F3F46" BorderThickness="1"
-            CornerRadius="6" Padding="0" Width="420" MaxHeight="540">
+    <Border Background="{StaticResource BgBase}" BorderBrush="{StaticResource BorderDefault}" BorderThickness="1"
+            CornerRadius="{StaticResource RadiusOuter}" Padding="0" Width="420" MaxHeight="540">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -102,27 +14,27 @@
             </Grid.RowDefinitions>
 
             <!-- 标题栏（X 关闭） -->
-            <Border Grid.Row="0" Background="#2D2D30" CornerRadius="6,6,0,0"
+            <Border Grid.Row="0" Background="{StaticResource BgSurface}" CornerRadius="8,8,0,0"
                     Padding="10,6" MouseLeftButtonDown="Header_MouseDown">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="{loc:Loc gv.title}" FontSize="13" FontWeight="Bold" Foreground="#FFFFFF"/>
+                    <TextBlock Text="{loc:Loc gv.title}" FontSize="13" FontWeight="Bold" Foreground="{StaticResource TextPrimary}"/>
                     <Button Grid.Column="1" Content="✕" Width="24" Height="22" FontSize="12"
                             Padding="0" Click="CloseBtn_Click" ToolTip="{loc:Loc settings.close}"/>
                 </Grid>
             </Border>
 
             <TextBlock Grid.Row="1" Text="{loc:Loc gv.desc}"
-                       FontSize="10" Foreground="#8A8A8A" TextWrapping="Wrap" Margin="14,8,14,8"/>
+                       FontSize="10" Foreground="{StaticResource TextTertiary}" TextWrapping="Wrap" Margin="14,8,14,8"/>
 
             <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" MaxHeight="380" Margin="14,0,14,0">
                 <StackPanel x:Name="List" Orientation="Vertical"/>
             </ScrollViewer>
 
-            <Border Grid.Row="3" Background="#252526" CornerRadius="0,0,6,6" Padding="14,8">
+            <Border Grid.Row="3" Background="{StaticResource BgSunken}" CornerRadius="0,0,8,8" Padding="14,8">
                 <Button x:Name="AddBtn" Content="{loc:Loc gv.add}" HorizontalAlignment="Left" Padding="10,4"
                         Click="AddBtn_Click"/>
             </Border>

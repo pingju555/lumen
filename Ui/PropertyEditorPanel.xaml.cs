@@ -7,12 +7,14 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Shapes;
 using Lumen.Core;
 using Lumen.Actions;
 using Lumen.Atoms;
 using Lumen.Formula;
 using Lumen.Globals;
 using Lumen.I18n;
+using Lumen.Presets;
 
 namespace Lumen.Ui
 {
@@ -35,10 +37,9 @@ namespace Lumen.Ui
         private readonly List<EditField> _fields;
         private readonly Dictionary<string, FieldState> _states = new();
         private readonly Dictionary<string, Grid> _fieldRows = new();   // 字段 Key → 其行容器(Grid)，供条件显隐刷新
-        private StackPanel _triggerPanel;
 
         /// <summary>隐藏底部确定/取消按钮（供嵌入 PropWindow 时使用，由外部提供应用按钮）。</summary>
-        public void HideButtons() => ButtonRow.Visibility = Visibility.Collapsed;
+        public void HideButtons() { }
 
         /// <summary>应用当前修改（触发 onStructuralChange + onCommit），供 PropWindow 调用。</summary>
         public void Apply() { _onStructuralChange?.Invoke(); _onCommit?.Invoke(); }
@@ -55,7 +56,6 @@ namespace Lumen.Ui
             _onOpenGvManager = onOpenGvManager;
             _ctx = ctx;
             _fields = atom.EditFields();
-            TitleTb.Text = Loc.T("prop.title.editType", atom.Type);
             BuildTabs();
         }
 
@@ -72,6 +72,7 @@ namespace Lumen.Ui
             public UIElement ValueHost;
             public UIElement FormulaHost;
             public UIElement GvHost;
+            public FrameworkElement ModeDotHost;    // 右侧绑定状态指示器（f=公式 G=变量 空=静态）
 
             public string Reader()
             {
@@ -96,11 +97,16 @@ namespace Lumen.Ui
         }
 
         // ---------- 分页：由原子 EditTabs() 决定有序标签页，字段按 Tab 键归位；交互/触发器/自定义页特殊处理 ----------
-        private static readonly HashSet<string> KnownTabKeys = new HashSet<string> { "content", "style", "layout", "animation", "interaction", "trigger" };
+        private static readonly HashSet<string> KnownTabKeys = new HashSet<string> { "content", "style", "texture", "layer", "layout", "animation", "interaction", "flow" };
+
+        /// <summary>构建的 Tab 内容，key = TabSpec.Key，value = (UIElement, LocKey) 对。</summary>
+        private readonly Dictionary<string, (UIElement Content, string LocKey)> _tabContents = new Dictionary<string, (UIElement, string)>();
+
+        public IReadOnlyDictionary<string, (UIElement Content, string LocKey)> TabContents => _tabContents;
 
         private void BuildTabs()
         {
-            Tabs.Items.Clear();
+            _tabContents.Clear();
 
             // 一次性构建所有字段行，按 Tab 键归类
             var rowsByKey = new Dictionary<string, List<Grid>>();
@@ -125,7 +131,7 @@ namespace Lumen.Ui
             {
                 UIElement body;
                 if (spec.Key == "interaction") body = BuildInteractionBlock();
-                else if (spec.Key == "trigger") body = BuildTriggerBlock();
+                else if (spec.Key == "flow") body = BuildFlowBlock();
                 else if (_atom is ICustomTabProvider c && !KnownTabKeys.Contains(spec.Key))
                 {
                     body = c.BuildCustomTab(spec.Key);
@@ -143,26 +149,24 @@ namespace Lumen.Ui
                 if (body == null) continue;
                 var sv = new ScrollViewer { MaxHeight = 400, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
                 sv.Content = body;
-                var tab = new TabItem { Header = Loc.T(spec.LocKey) };
-                tab.Content = sv;
-                Tabs.Items.Add(tab);
+                _tabContents[spec.Key] = (sv, spec.LocKey);
             }
-            if (Tabs.Items.Count > 0) Tabs.SelectedIndex = 0;
         }
 
-        /// <summary>把单个字段渲染为一行（标签 + [值|公式|变量] 三态输入），供标签页按需归位。</summary>
+        /// <summary>把单个字段渲染为一行（标签 + [值|公式|变量] 三态输入 + 右侧绑定状态点），供标签页按需归位。</summary>
         private Grid BuildFieldRow(EditField f, string raw, FieldState st)
         {
             var row = new Grid { Margin = new Thickness(0, 0, 0, 12) };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(92) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
             var label = new TextBlock
             {
                 Text = f.Label,
                 VerticalAlignment = VerticalAlignment.Top,
                 Margin = new Thickness(0, 4, 8, 0),
-                Foreground = new SolidColorBrush(Color.FromRgb(0xD4, 0xD4, 0xD4)),
+                Foreground = Theme.TextSecondary,
                 TextWrapping = TextWrapping.Wrap
             };
             Grid.SetColumn(label, 0);
@@ -183,35 +187,87 @@ namespace Lumen.Ui
                 {
                     Text = f.Hint,
                     FontSize = 10,
-                    Foreground = new SolidColorBrush(Color.FromRgb(0x9A, 0x9A, 0x9A)),
+                    Foreground = Theme.TextTertiary,
                     TextWrapping = TextWrapping.Wrap,
                     Margin = new Thickness(0, 4, 0, 0)
                 });
             Grid.SetColumn(input, 1);
             row.Children.Add(input);
+
+            // 右侧绑定状态指示器（ƒ=公式 G=变量 空=静态）
+            st.ModeDotHost = MakeModeDot(st);
+            Grid.SetColumn(st.ModeDotHost, 2);
+            row.Children.Add(st.ModeDotHost);
             return row;
         }
 
-        // ---------- 动作类型选项（P5 行为系统，供点击动作 / 流程动作复用） ----------
-        private static (ActionKind kind, string key)[] ActionKindOptions() => new[]
+        /// <summary>统一数值输入框样式：深色背景 + 边框 + 圆角 + 内边距（数值字段与 Slider 旁输入框一致）。</summary>
+        private static TextBox MakeNumberBox(string text, double minWidth, Action<string> onChanged)
         {
-            (ActionKind.None, "prop.action.none"),
-            (ActionKind.RunApp, "prop.action.runApp"),
-            (ActionKind.MediaControl, "prop.action.mediaControl"),
-            (ActionKind.SwitchPage, "prop.action.switchPage"),
-            (ActionKind.ToggleEditMode, "prop.action.toggleEditMode"),
-            (ActionKind.OpenSettings, "prop.action.openSettings"),
-            (ActionKind.LockScreen, "prop.action.lockScreen"),
-            (ActionKind.OpenURL, "prop.action.openUrl"),
-            (ActionKind.Command, "prop.action.command"),
-            (ActionKind.SwitchPreset, "prop.action.switchPreset"),
-        };
+            var tb = new TextBox
+            {
+                Text = text,
+                MinWidth = minWidth,
+                Background = Theme.BgBase,
+                Foreground = Theme.TextPrimary,
+                CaretBrush = Theme.TextPrimary,
+                BorderBrush = Theme.BorderSoft,
+                BorderThickness = new Thickness(1),
+                Padding = new Thickness(4, 2, 4, 2)
+            };
+            if (onChanged != null) tb.TextChanged += (s, e) => onChanged(tb.Text);
+            return tb;
+        }
+
+        /// <summary>右侧绑定状态点：公式模式红点 / 否则空心（白底灰描边）。</summary>
+        private static FrameworkElement MakeModeDot(FieldState st)
+        {
+            var tb = new TextBlock
+            {
+                Text = "",
+                FontSize = 11,
+                Width = 18,
+                Height = 18,
+                Margin = new Thickness(6, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                TextAlignment = TextAlignment.Center,
+                FontWeight = FontWeights.Bold,
+                ToolTip = Loc.T("prop.formula.unbound")
+            };
+            st.ModeDotHost = tb;
+            UpdateModeDot(st);
+            return tb;
+        }
+
+        private static void UpdateModeDot(FieldState st)
+        {
+            if (st.ModeDotHost is not TextBlock tb) return;
+            switch (st.Mode)
+            {
+                case PropMode.Formula:
+                    tb.Text = "ƒ";
+                    tb.Foreground = new SolidColorBrush(Color.FromRgb(0xEF, 0x44, 0x44));
+                    tb.ToolTip = Loc.T("prop.formula.bound");
+                    break;
+                case PropMode.Global:
+                    tb.Text = "G";
+                    tb.Foreground = Theme.OkGreen;
+                    tb.ToolTip = Loc.T("prop.mode.global");
+                    break;
+                default:
+                    tb.Text = "";
+                    tb.ToolTip = Loc.T("prop.formula.unbound");
+                    break;
+            }
+        }
 
         // ---------- 点击动作交互区块（P5 行为系统） ----------
         private StackPanel BuildInteractionBlock()
         {
             var panel = new StackPanel { Orientation = Orientation.Vertical };
-            var options = ActionKindOptions();
+            var ae = new ActionEditor(_atom, _onPreview, _ctx);
+            var options = ActionEditor.ActionKindOptions();
 
             panel.Children.Add(new Separator { Margin = new Thickness(0, 10, 0, 6) });
             panel.Children.Add(new TextBlock
@@ -220,49 +276,38 @@ namespace Lumen.Ui
                 FontWeight = FontWeights.Bold,
                 FontSize = 12,
                 Margin = new Thickness(0, 0, 0, 6),
-                Foreground = new SolidColorBrush(Colors.White)
+                Foreground = Theme.TextPrimary
             });
 
             var cur = _atom.ClickAction ?? AtomAction.None();
 
-            var kindCb = new ComboBox { MinHeight = 24, IsEditable = false, Margin = new Thickness(0, 0, 0, 4), Foreground = new SolidColorBrush(Color.FromRgb(0xF0, 0xF0, 0xF0)) };
+            var kindCb = new ComboBox { MinHeight = 24, IsEditable = false, Margin = new Thickness(0, 0, 0, 4), Foreground = Theme.TextSecondary };
             foreach (var (kind, key) in options) kindCb.Items.Add(Loc.T(key));
             int sel = 0;
             for (int i = 0; i < options.Length; i++) if (options[i].kind == cur.Kind) { sel = i; break; }
             kindCb.SelectedIndex = sel;
 
-            var argTb = new TextBox
-            {
-                MinWidth = 220,
-                Margin = new Thickness(0, 0, 0, 2),
-                Text = cur.Kind == ActionKind.None ? "" : (cur.Arg ?? "")
-            };
-            var browseBtn = new Button
-            {
-                Content = Loc.T("prop.browse"),
-                Margin = new Thickness(8, 0, 0, 2),
-                Padding = new Thickness(8, 0, 8, 0),
-                Visibility = Visibility.Collapsed
-            };
-            browseBtn.Click += (s, e) =>
-            {
-                var picked = FilePickerWindow.PickFile(Window.GetWindow(this), Loc.T("prop.dlg.exeFilter"), argTb.Text);
-                if (!string.IsNullOrEmpty(picked)) argTb.Text = picked;
-            };
-            var argRow = new StackPanel { Orientation = Orientation.Horizontal };
-            argRow.Children.Add(argTb);
-            argRow.Children.Add(browseBtn);
+            var argHost = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(0, 2, 0, 0) };
             var hint = new TextBlock
             {
                 FontSize = 10,
-                Foreground = new SolidColorBrush(Color.FromRgb(0xB0, 0xB0, 0xB0)),
+                Foreground = Theme.TextTertiary,
                 TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(0, 2, 0, 0)
+                Margin = new Thickness(0, 4, 0, 0)
             };
+
+            ActionKind CurKind() => options[kindCb.SelectedIndex >= 0 ? kindCb.SelectedIndex : 0].kind;
+
+            void SetArg(string v)
+            {
+                var k = CurKind();
+                _atom.ClickAction = (k == ActionKind.None) ? AtomAction.None() : new AtomAction { Kind = k, Arg = v };
+                _onPreview?.Invoke();
+            }
 
             void UpdateHint()
             {
-                var k = options[kindCb.SelectedIndex >= 0 ? kindCb.SelectedIndex : 0].kind;
+                var k = CurKind();
                 hint.Text = k switch
                 {
                     ActionKind.RunApp => Loc.T("prop.hint.runApp", Loc.T("prop.browse")),
@@ -271,348 +316,92 @@ namespace Lumen.Ui
                     ActionKind.OpenURL => Loc.T("prop.hint.openUrl"),
                     ActionKind.Command => Loc.T("prop.hint.command", Loc.T("prop.browse")),
                     ActionKind.SwitchPreset => Loc.T("prop.hint.switchPreset"),
+                    ActionKind.RunFlow => Loc.T("prop.hint.runFlow"),
+                    ActionKind.SetVar => Loc.T("prop.hint.setVar"),
+                    ActionKind.Delay => Loc.T("prop.hint.delay"),
+                    ActionKind.ReadFile => Loc.T("prop.hint.readFile"),
                     _ => Loc.T("prop.hint.default")
                 };
-                argTb.IsEnabled = k != ActionKind.None
-                    && k != ActionKind.ToggleEditMode
-                    && k != ActionKind.OpenSettings
-                    && k != ActionKind.LockScreen;
-                browseBtn.Visibility = (k == ActionKind.RunApp || k == ActionKind.Command) ? Visibility.Visible : Visibility.Collapsed;
             }
+
+            // 依据当前动作类型构建参数控件：枚举类参数用下拉，自由文本类用文本框(+浏览)
+            void RebuildArg()
+            {
+                argHost.Children.Clear();
+                var k = CurKind();
+                var curArg = (_atom.ClickAction != null && _atom.ClickAction.Kind == k) ? (_atom.ClickAction.Arg ?? "") : "";
+                if (k == ActionKind.None || k == ActionKind.ToggleEditMode || k == ActionKind.OpenSettings || k == ActionKind.LockScreen)
+                    return; // 无参数动作
+
+                if (k == ActionKind.MediaControl)
+                {
+                    argHost.Children.Add(ActionEditor.BuildDropdown(curArg, SetArg,
+                        ("play", Loc.T("prop.arg.play")), ("pause", Loc.T("prop.arg.pause")),
+                        ("next", Loc.T("prop.arg.next")), ("prev", Loc.T("prop.arg.prev")), ("stop", Loc.T("prop.arg.stop"))));
+                    return;
+                }
+                if (k == ActionKind.SwitchPreset)
+                {
+                    var items = new List<(string raw, string label)>
+                    {
+                        ("+1", Loc.T("prop.arg.presetNext")), ("-1", Loc.T("prop.arg.presetPrev"))
+                    };
+                    foreach (var p in PresetLibrary.Builtins.Concat(PresetLibrary.User))
+                        items.Add((p.Name, p.Name));
+                    argHost.Children.Add(ActionEditor.BuildDropdown(curArg, SetArg, items.ToArray()));
+                    return;
+                }
+                if (k == ActionKind.SwitchPage)
+                {
+                    var pc = LumenWindow.Main?.PageCount ?? 0;
+                    var items = new List<(string raw, string label)>
+                    {
+                        ("+1", Loc.T("prop.arg.pageNext")), ("-1", Loc.T("prop.arg.pagePrev"))
+                    };
+                    for (int i = 0; i < pc; i++) items.Add((i.ToString(), Loc.T("prop.arg.pageN", (i + 1).ToString())));
+                    argHost.Children.Add(ActionEditor.BuildDropdown(curArg, SetArg, items.ToArray()));
+                    return;
+                }
+                // 新动作类型（RunFlow / SetVar / Delay / ReadFile）：组合参数控件
+                var comp = ae.BuildCompositeArg(k, curArg, SetArg);
+                if (comp != null) { argHost.Children.Add(comp); return; }
+                // RunApp / OpenURL / Command：文本框（RunApp/Command 附浏览按钮）
+                var argTb = new TextBox { MinWidth = 220, Text = curArg };
+                argTb.TextChanged += (s, e) => SetArg(argTb.Text);
+                var row = new StackPanel { Orientation = Orientation.Horizontal };
+                row.Children.Add(argTb);
+                if (k == ActionKind.RunApp || k == ActionKind.Command)
+                {
+                    var browseBtn = new Button { Content = Loc.T("prop.browse"), Margin = new Thickness(8, 0, 0, 0), Padding = new Thickness(8, 0, 8, 0) };
+                    browseBtn.Click += (s, e) =>
+                    {
+                        var picked = FilePickerWindow.PickFile(Window.GetWindow(this), Loc.T("prop.dlg.exeFilter"), argTb.Text);
+                        if (!string.IsNullOrEmpty(picked)) argTb.Text = picked;
+                    };
+                    row.Children.Add(browseBtn);
+                }
+                argHost.Children.Add(row);
+            }
+
+            kindCb.SelectionChanged += (s, e) => { RebuildArg(); UpdateHint(); };
+            RebuildArg();
             UpdateHint();
 
-            kindCb.SelectionChanged += (s, e) =>
-            {
-                var k = options[kindCb.SelectedIndex >= 0 ? kindCb.SelectedIndex : 0].kind;
-                _atom.ClickAction = (k == ActionKind.None) ? AtomAction.None() : new AtomAction { Kind = k, Arg = argTb.Text };
-                UpdateHint();
-                _onPreview?.Invoke();
-            };
-            argTb.TextChanged += (s, e) =>
-            {
-                if (_atom.ClickAction != null && _atom.ClickAction.Kind != ActionKind.None)
-                    _atom.ClickAction = new AtomAction { Kind = _atom.ClickAction.Kind, Arg = argTb.Text };
-                _onPreview?.Invoke();
-            };
-
-            panel.Children.Add(new TextBlock { Text = Loc.T("prop.action.type"), FontSize = 11, Foreground = new SolidColorBrush(Color.FromRgb(0xD4, 0xD4, 0xD4)), Margin = new Thickness(0, 4, 0, 2) });
+            panel.Children.Add(new TextBlock { Text = Loc.T("prop.action.type"), FontSize = 11, Foreground = Theme.TextSecondary, Margin = new Thickness(0, 4, 0, 2) });
             panel.Children.Add(kindCb);
-            panel.Children.Add(new TextBlock { Text = Loc.T("prop.arg"), FontSize = 11, Foreground = new SolidColorBrush(Color.FromRgb(0xD4, 0xD4, 0xD4)), Margin = new Thickness(0, 6, 0, 2) });
-            panel.Children.Add(argRow);
+            panel.Children.Add(new TextBlock { Text = Loc.T("prop.arg"), FontSize = 11, Foreground = Theme.TextSecondary, Margin = new Thickness(0, 6, 0, 2) });
+            panel.Children.Add(argHost);
             panel.Children.Add(hint);
 
             return panel;
         }
 
-        // ---------- 触发器区块（P5 触发器系统：条件 → 自动执行动作） ----------
-        private StackPanel BuildTriggerBlock()
+        // ---------- 流程区块（P5 流程系统：条件 → 自动执行动作序列） ----------
+        // 流程 / 动作编辑逻辑已解耦至 ActionEditor，本段仅保留 flow 标签页的委托入口。
+        // flow 标签页：委托给解耦的 ActionEditor 模块
+        private UIElement BuildFlowBlock()
         {
-            var panel = new StackPanel { Orientation = Orientation.Vertical };
-            panel.Children.Add(new TextBlock
-            {
-                Text = Loc.T("prop.trigger.title"),
-                FontWeight = FontWeights.Bold,
-                FontSize = 12,
-                Margin = new Thickness(0, 0, 0, 6),
-                Foreground = new SolidColorBrush(Colors.White)
-            });
-            panel.Children.Add(new TextBlock
-            {
-                FontSize = 10,
-                Foreground = new SolidColorBrush(Color.FromRgb(0xB0, 0xB0, 0xB0)),
-                TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(0, 0, 0, 6),
-                Text = Loc.T("prop.trigger.desc")
-            });
-
-            _triggerPanel = new StackPanel { Orientation = Orientation.Vertical };
-            panel.Children.Add(_triggerPanel);
-            RebuildTriggerCards();
-            return panel;
-        }
-
-        private void RebuildTriggerCards()
-        {
-            if (_triggerPanel == null) return;
-            _triggerPanel.Children.Clear();
-            foreach (var trig in _atom.Triggers)
-                _triggerPanel.Children.Add(BuildTriggerCard(trig));
-            var addBtn = new Button
-            {
-                Content = Loc.T("prop.trigger.add"),
-                Margin = new Thickness(0, 6, 0, 0),
-                HorizontalAlignment = HorizontalAlignment.Left,
-                Padding = new Thickness(8, 3, 8, 3)
-            };
-            addBtn.Click += (s, e) => { _atom.Triggers.Add(new AtomTrigger()); RebuildTriggerCards(); };
-            _triggerPanel.Children.Add(addBtn);
-        }
-
-        private UIElement BuildTriggerCard(AtomTrigger trig)
-        {
-            var card = new Border
-            {
-                BorderBrush = new SolidColorBrush(Color.FromRgb(0x3F, 0x3F, 0x46)),
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(3),
-                Padding = new Thickness(8),
-                Margin = new Thickness(0, 0, 0, 8),
-                Background = new SolidColorBrush(Color.FromRgb(0x1B, 0x1B, 0x1D))
-            };
-            var sp = new StackPanel { Orientation = Orientation.Vertical };
-
-            // 标题行：说明 + 删除
-            var head = new Grid();
-            head.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            head.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            head.Children.Add(new TextBlock { Text = Loc.T("prop.trigger.when"), FontSize = 11, Foreground = new SolidColorBrush(Color.FromRgb(0xD4, 0xD4, 0xD4)), VerticalAlignment = VerticalAlignment.Center });
-            var del = new Button { Content = Loc.T("prop.delete"), FontSize = 10, Padding = new Thickness(6, 2, 6, 2) };
-            del.Click += (s, e) => { _atom.Triggers.Remove(trig); RebuildTriggerCards(); };
-            Grid.SetColumn(del, 1);
-            head.Children.Add(del);
-            sp.Children.Add(head);
-
-            // 条件输入框（布尔公式）
-            var condTb = new TextBox
-            {
-                MinWidth = 220,
-                MinHeight = 44,
-                TextWrapping = TextWrapping.Wrap,
-                AcceptsReturn = true,
-                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                MaxHeight = 140,
-                FontFamily = new FontFamily("Consolas"),
-                FontSize = 12,
-                Background = new SolidColorBrush(Color.FromRgb(0x1E, 0x1E, 0x1E)),
-                Foreground = new SolidColorBrush(Colors.White),
-                CaretBrush = new SolidColorBrush(Colors.White),
-                BorderBrush = new SolidColorBrush(Color.FromRgb(0x55, 0x55, 0x55)),
-                BorderThickness = new Thickness(1),
-                VerticalContentAlignment = VerticalAlignment.Top,
-                Text = trig.Condition ?? "",
-                ToolTip = Loc.T("prop.trigger.condTooltip")
-            };
-            var condStatus = new TextBlock { FontSize = 10, Margin = new Thickness(0, 3, 0, 0), Visibility = Visibility.Collapsed };
-            condTb.TextChanged += (s, e) =>
-            {
-                trig.Condition = condTb.Text;
-                UpdateTriggerConditionStatus(condTb, condStatus);
-                _onPreview?.Invoke();
-            };
-            sp.Children.Add(condTb);
-            sp.Children.Add(condStatus);
-
-            // 预设条件（点选一键填入上方布尔公式框，使用真实可用的函数名）
-            sp.Children.Add(new TextBlock
-            {
-                Text = Loc.T("prop.trigger.presetCond"),
-                FontSize = 11,
-                Foreground = new SolidColorBrush(Color.FromRgb(0xD4, 0xD4, 0xD4)),
-                Margin = new Thickness(0, 8, 0, 2)
-            });
-            var presetCb = new ComboBox { MinHeight = 24, IsEditable = false, Foreground = new SolidColorBrush(Color.FromRgb(0xF0, 0xF0, 0xF0)) };
-            var presets = new (string key, string formula)[]
-            {
-                ("prop.preset.custom", ""),
-                ("prop.preset.mediaPlaying", "mi(playing) = \"Playing\""),
-                ("prop.preset.cpuHigh", "si(cpu) > 80"),
-                ("prop.preset.memHigh", "si(mem) > 80"),
-                ("prop.preset.darkMode", "si(dark) = 1"),
-                ("prop.preset.batteryLow", "bi(level) < 20"),
-                ("prop.preset.charging", "bi(plugged) = 1"),
-                ("prop.preset.appForeground", "mi(avail) > 0"),
-                ("prop.preset.gvTrue", "gv(flag) = 1"),
-            };
-            foreach (var (key, _) in presets) presetCb.Items.Add(Loc.T(key));
-            presetCb.SelectedIndex = 0;
-            presetCb.SelectionChanged += (s, e) =>
-            {
-                if (presetCb.SelectedIndex <= 0) return;        // 自定义：保持手填
-                var f = presets[presetCb.SelectedIndex].formula;
-                if (!string.IsNullOrEmpty(f)) condTb.Text = f;  // 触发 condTb.TextChanged 自动写回
-            };
-            sp.Children.Add(presetCb);
-
-            // 触发模式
-            var modeCb = new ComboBox { MinHeight = 24, IsEditable = false, Margin = new Thickness(0, 6, 0, 0), Foreground = new SolidColorBrush(Color.FromRgb(0xF0, 0xF0, 0xF0)) };
-            modeCb.Items.Add(Loc.T("prop.trigger.modeOnce"));
-            modeCb.Items.Add(Loc.T("prop.trigger.modeWhile"));
-            modeCb.SelectedIndex = trig.Mode == TriggerFireMode.While ? 1 : 0;
-            modeCb.SelectionChanged += (s, e) =>
-            {
-                trig.Mode = modeCb.SelectedIndex == 1 ? TriggerFireMode.While : TriggerFireMode.Once;
-                _onPreview?.Invoke();
-            };
-            sp.Children.Add(new TextBlock { Text = Loc.T("prop.trigger.mode"), FontSize = 11, Foreground = new SolidColorBrush(Color.FromRgb(0xD4, 0xD4, 0xD4)), Margin = new Thickness(0, 6, 0, 2) });
-            sp.Children.Add(modeCb);
-
-            // 流程（一组按顺序执行的动作）
-            sp.Children.Add(new TextBlock { Text = Loc.T("prop.trigger.flow"), FontSize = 11, Foreground = new SolidColorBrush(Color.FromRgb(0xD4, 0xD4, 0xD4)), Margin = new Thickness(0, 6, 0, 2) });
-            sp.Children.Add(BuildFlowEditor(trig.Actions));
-
-            card.Child = sp;
-            UpdateTriggerConditionStatus(condTb, condStatus);
-            return card;
-        }
-
-        /// <summary>动作编辑器（复用点击动作的按钮类型集合）；直接写回 target 对象（与 _atom.Triggers 同源引用）。</summary>
-        private UIElement BuildActionEditor(AtomAction target)
-        {
-            var sp = new StackPanel { Orientation = Orientation.Vertical };
-            var options = ActionKindOptions();
-            var kindCb = new ComboBox { MinHeight = 24, IsEditable = false };
-            foreach (var (kind, key) in options) kindCb.Items.Add(Loc.T(key));
-            int sel = 0;
-            for (int i = 0; i < options.Length; i++) if (options[i].kind == target.Kind) { sel = i; break; }
-            kindCb.SelectedIndex = sel;
-            var argTb = new TextBox { MinWidth = 220, Margin = new Thickness(0, 2, 0, 0), Text = target.Kind == ActionKind.None ? "" : (target.Arg ?? "") };
-            var browseBtn = new Button
-            {
-                Content = Loc.T("prop.browse"),
-                Margin = new Thickness(8, 0, 0, 0),
-                Padding = new Thickness(8, 0, 8, 0),
-                Visibility = Visibility.Collapsed
-            };
-            browseBtn.Click += (s, e) =>
-            {
-                var picked = FilePickerWindow.PickFile(Window.GetWindow(this), Loc.T("prop.dlg.exeFilter"), argTb.Text);
-                if (!string.IsNullOrEmpty(picked)) argTb.Text = picked;
-            };
-            var argRow = new StackPanel { Orientation = Orientation.Horizontal };
-            argRow.Children.Add(argTb);
-            argRow.Children.Add(browseBtn);
-            var hint = new TextBlock { FontSize = 10, Foreground = new SolidColorBrush(Color.FromRgb(0xB0, 0xB0, 0xB0)), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) };
-            void UpdateHint()
-            {
-                var k = options[kindCb.SelectedIndex >= 0 ? kindCb.SelectedIndex : 0].kind;
-                hint.Text = k switch
-                {
-                    ActionKind.RunApp => Loc.T("prop.hint.runApp", Loc.T("prop.browse")),
-                    ActionKind.MediaControl => Loc.T("prop.hint.mediaControl"),
-                    ActionKind.SwitchPage => Loc.T("prop.hint.switchPage"),
-                    ActionKind.OpenURL => Loc.T("prop.hint.openUrl"),
-                    ActionKind.Command => Loc.T("prop.hint.command", Loc.T("prop.browse")),
-                    ActionKind.SwitchPreset => Loc.T("prop.hint.switchPreset"),
-                    _ => Loc.T("prop.hint.default")
-                };
-                argTb.IsEnabled = k != ActionKind.None
-                    && k != ActionKind.ToggleEditMode
-                    && k != ActionKind.OpenSettings
-                    && k != ActionKind.LockScreen;
-                browseBtn.Visibility = (k == ActionKind.RunApp || k == ActionKind.Command) ? Visibility.Visible : Visibility.Collapsed;
-            }
-            UpdateHint();
-            kindCb.SelectionChanged += (s, e) =>
-            {
-                var k = options[kindCb.SelectedIndex >= 0 ? kindCb.SelectedIndex : 0].kind;
-                target.Kind = k;
-                if (target.Kind == ActionKind.None) target.Arg = "";
-                UpdateHint();
-                _onPreview?.Invoke();
-            };
-            argTb.TextChanged += (s, e) => { target.Arg = argTb.Text; _onPreview?.Invoke(); };
-            sp.Children.Add(kindCb);
-            sp.Children.Add(argRow);
-            sp.Children.Add(hint);
-            return sp;
-        }
-
-        /// <summary>流程编辑器：编辑一个有序动作列表（trig.Actions）。每个步骤复用 BuildActionEditor，支持上移/下移/删除，可追加新步骤。
-        /// steps 与 trig.Actions 同源引用，改动即时写回并触发 _onPreview。</summary>
-        private UIElement BuildFlowEditor(List<AtomAction> steps)
-        {
-            var sp = new StackPanel { Orientation = Orientation.Vertical };
-            var stepsPanel = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(0, 0, 0, 4) };
-            sp.Children.Add(stepsPanel);
-
-            void RebuildSteps()
-            {
-                stepsPanel.Children.Clear();
-                for (int i = 0; i < steps.Count; i++)
-                {
-                    var step = steps[i];
-                    var border = new Border
-                    {
-                        BorderBrush = new SolidColorBrush(Color.FromRgb(0x3A, 0x3A, 0x40)),
-                        BorderThickness = new Thickness(1),
-                        CornerRadius = new CornerRadius(3),
-                        Padding = new Thickness(6),
-                        Margin = new Thickness(0, 0, 0, 6),
-                        Background = new SolidColorBrush(Color.FromRgb(0x14, 0x14, 0x16))
-                    };
-                    var vs = new StackPanel { Orientation = Orientation.Vertical };
-                    vs.Children.Add(new TextBlock
-                    {
-                        Text = Loc.T("prop.step", i + 1),
-                        FontSize = 10,
-                        Foreground = new SolidColorBrush(Color.FromRgb(0xB0, 0xB0, 0xB0)),
-                        Margin = new Thickness(0, 0, 0, 2)
-                    });
-                    vs.Children.Add(BuildActionEditor(step));
-                    var ctl = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
-                    var up = new Button { Content = Loc.T("prop.moveUp"), FontSize = 10, Padding = new Thickness(6, 2, 6, 2), Margin = new Thickness(0, 0, 4, 0) };
-                    var down = new Button { Content = Loc.T("prop.moveDown"), FontSize = 10, Padding = new Thickness(6, 2, 6, 2), Margin = new Thickness(0, 0, 4, 0) };
-                    var del = new Button { Content = Loc.T("prop.delete"), FontSize = 10, Padding = new Thickness(6, 2, 6, 2) };
-                    up.Click += (s, e) => { if (i > 0) { var tmp = steps[i - 1]; steps[i - 1] = steps[i]; steps[i] = tmp; RebuildSteps(); _onPreview?.Invoke(); } };
-                    down.Click += (s, e) => { if (i < steps.Count - 1) { var tmp = steps[i + 1]; steps[i + 1] = steps[i]; steps[i] = tmp; RebuildSteps(); _onPreview?.Invoke(); } };
-                    del.Click += (s, e) => { steps.Remove(step); RebuildSteps(); _onPreview?.Invoke(); };
-                    ctl.Children.Add(up); ctl.Children.Add(down); ctl.Children.Add(del);
-                    vs.Children.Add(ctl);
-                    border.Child = vs;
-                    stepsPanel.Children.Add(border);
-                }
-                var add = new Button
-                {
-                    Content = Loc.T("prop.action.add"),
-                    Margin = new Thickness(0, 2, 0, 0),
-                    HorizontalAlignment = HorizontalAlignment.Left,
-                    Padding = new Thickness(8, 3, 8, 3)
-                };
-                add.Click += (s, e) => { steps.Add(new AtomAction()); RebuildSteps(); _onPreview?.Invoke(); };
-                stepsPanel.Children.Add(add);
-            }
-
-            RebuildSteps();
-            return sp;
-        }
-
-        /// <summary>触发器条件语法实时校验 + 当前真值预览（语法有效时尝试即时求值，显示「当前成立 = true/false」）。</summary>
-        private void UpdateTriggerConditionStatus(TextBox tb, TextBlock status)
-        {
-            var expr = (tb.Text ?? "").Trim();
-            if (expr.Length == 0)
-            {
-                tb.BorderBrush = new SolidColorBrush(Color.FromRgb(0x55, 0x55, 0x55));
-                tb.BorderThickness = new Thickness(1);
-                status.Visibility = Visibility.Collapsed;
-                return;
-            }
-            try
-            {
-                Parser.Parse(Lexer.Tokenize(expr));
-                tb.BorderBrush = new SolidColorBrush(Color.FromRgb(0x55, 0x55, 0x55));
-                tb.BorderThickness = new Thickness(1);
-                if (_ctx != null)
-                {
-                    try
-                    {
-                        var v = _ctx.Eval(expr);
-                        status.Foreground = new SolidColorBrush(Color.FromRgb(0x6A, 0xD1, 0x7A));
-                        status.Text = Loc.T("prop.trigger.currentTrue", v.AsBool().ToString().ToLower());
-                        status.Visibility = Visibility.Visible;
-                    }
-                    catch { status.Visibility = Visibility.Collapsed; }
-                }
-                else status.Visibility = Visibility.Collapsed;
-            }
-            catch (Exception ex)
-            {
-                tb.BorderBrush = new SolidColorBrush(Color.FromRgb(0xE5, 0x4B, 0x4B));
-                tb.BorderThickness = new Thickness(1.5);
-                status.Foreground = new SolidColorBrush(Color.FromRgb(0xE5, 0x4B, 0x4B));
-                status.Text = Loc.T("prop.formula.error", ex.Message.Split('\n')[0]);
-                status.Visibility = Visibility.Visible;
-            }
+            return new ActionEditor(_atom, _onPreview, _ctx).BuildFlowBlock();
         }
 
         // ---------- 模式切换条 ----------
@@ -644,6 +433,7 @@ namespace Lumen.Ui
                     if (m == PropMode.Formula && st.FormulaTb != null) st.FormulaTb.Focus();
                     SyncHostVisibility(st);
                     HighlightToggle(buttons, m);
+                    UpdateModeDot(st);
                     Preview(st.Field);
                 };
                 buttons.Add(b);
@@ -658,8 +448,8 @@ namespace Lumen.Ui
             foreach (var b in buttons)
             {
                 var on = (PropMode)b.Tag == active;
-                b.Background = new SolidColorBrush(on ? Color.FromRgb(0x00, 0x7A, 0xCC) : Color.FromRgb(0x3A, 0x3D, 0x41));
-                b.Foreground = new SolidColorBrush(on ? Colors.White : Color.FromRgb(0xF0, 0xF0, 0xF0));
+                b.Background = new SolidColorBrush(on ? Theme.BgActive.Color : Theme.BgHover.Color);
+                b.Foreground = new SolidColorBrush(on ? Theme.TextPrimary.Color : Theme.TextSecondary.Color);
             }
         }
 
@@ -677,7 +467,7 @@ namespace Lumen.Ui
             {
                 case EditKind.Choice:
                     {
-                        var cb = new ComboBox { MinHeight = 24, IsEditable = false, Foreground = new SolidColorBrush(Color.FromRgb(0xF0, 0xF0, 0xF0)) };
+                        var cb = new ComboBox { MinHeight = 24, IsEditable = false, Foreground = Theme.TextSecondary };
                         // 每项：Tag=规范值（持久化用），Content=本地化名（无前缀则直接显示规范值）
                         ComboBoxItem MatchRaw(string rawVal)
                         {
@@ -721,8 +511,7 @@ namespace Lumen.Ui
                     }
                 case EditKind.Number:
                     {
-                        var tb = new TextBox { Text = raw, MinWidth = 120 };
-                        tb.TextChanged += (s, e) => Preview(f);
+                        var tb = MakeNumberBox(raw, 120, _ => Preview(f));
                         st.ReadValue = () => tb.Text;
                         return tb;
                     }
@@ -731,7 +520,7 @@ namespace Lumen.Ui
                         var cb = new CheckBox
                         {
                             IsChecked = raw == "1" || raw.Equals("true", StringComparison.OrdinalIgnoreCase),
-                            Foreground = new SolidColorBrush(Colors.White),
+                            Foreground = Theme.TextPrimary,
                             VerticalAlignment = VerticalAlignment.Center
                         };
                         st.ReadValue = () => cb.IsChecked == true ? "1" : "0";
@@ -752,24 +541,19 @@ namespace Lumen.Ui
                             VerticalAlignment = VerticalAlignment.Center,
                             TickFrequency = (f.Max - f.Min) / 20
                         };
-                        var num = new TextBox
+                        var num = MakeNumberBox(cur.ToString("0.##"), 56, tbText =>
                         {
-                            Width = 56,
-                            VerticalAlignment = VerticalAlignment.Center,
-                            Margin = new Thickness(8, 0, 0, 0),
-                            Text = cur.ToString("0.##")
-                        };
-                        sl.ValueChanged += (s, e) => { num.Text = sl.Value.ToString("0.##"); Preview(f); };
-                        num.TextChanged += (s, e) =>
-                        {
-                            if (double.TryParse(num.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out var v))
+                            if (double.TryParse(tbText, NumberStyles.Any, CultureInfo.InvariantCulture, out var v))
                             {
                                 if (v < f.Min) v = f.Min;
                                 if (v > f.Max) v = f.Max;
                                 sl.Value = v;
                                 Preview(f);
                             }
-                        };
+                        });
+                        num.Width = 56;
+                        num.Margin = new Thickness(8, 0, 0, 0);
+                        sl.ValueChanged += (s, e) => { num.Text = sl.Value.ToString("0.##"); Preview(f); };
                         var sp = new StackPanel { Orientation = Orientation.Horizontal };
                         sp.Children.Add(sl);
                         sp.Children.Add(num);
@@ -794,7 +578,7 @@ namespace Lumen.Ui
             var swatch = new Border
             {
                 Width = 28, Height = 22,
-                BorderBrush = new SolidColorBrush(Color.FromRgb(0x55, 0x55, 0x55)),
+                BorderBrush = Theme.BorderSoft,
                 BorderThickness = new Thickness(1),
                 Background = new SolidColorBrush(Color.FromArgb(a, r, g, b)),
                 Cursor = Cursors.Hand
@@ -846,10 +630,10 @@ namespace Lumen.Ui
                 MaxHeight = 160,
                 FontFamily = new FontFamily("Consolas"),
                 FontSize = 12,
-                Background = new SolidColorBrush(Color.FromRgb(0x1E, 0x1E, 0x1E)),
-                Foreground = new SolidColorBrush(Colors.White),
-                CaretBrush = new SolidColorBrush(Colors.White),
-                BorderBrush = new SolidColorBrush(Color.FromRgb(0x55, 0x55, 0x55)),
+                Background = Theme.BgBase,
+                Foreground = Theme.TextPrimary,
+                CaretBrush = Theme.TextPrimary,
+                BorderBrush = Theme.BorderSoft,
                 BorderThickness = new Thickness(1),
                 VerticalContentAlignment = VerticalAlignment.Top,
                 ToolTip = Loc.T("prop.formula.tooltip")
@@ -904,25 +688,79 @@ namespace Lumen.Ui
                 Title = Loc.T("prop.func.title"), Width = 520, Height = 380,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 Owner = Window.GetWindow(this),
-                Background = new SolidColorBrush(Color.FromRgb(0x1E, 0x1E, 0x1E)),
+                Background = Theme.BgBase,
                 WindowStyle = WindowStyle.None, AllowsTransparency = true,
                 ResizeMode = ResizeMode.NoResize, ShowInTaskbar = false, Topmost = true
             };
             var root = new Grid();
             root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });   // 标题
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });   // 公式栏（输入+预览）
             root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // 主体
             root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });   // 底部
 
             // 标题栏
             var titleBar = new Border
             {
-                Background = new SolidColorBrush(Color.FromRgb(0x2D, 0x2D, 0x30)),
+                Background = Theme.BgSurface,
                 Padding = new Thickness(10, 6, 10, 6)
             };
             titleBar.MouseLeftButtonDown += (s, e) => { if (e.ChangedButton == MouseButton.Left) win.DragMove(); };
-            titleBar.Child = new TextBlock { Text = Loc.T("prop.func.title"), FontSize = 13, FontWeight = FontWeights.Bold, Foreground = new SolidColorBrush(Colors.White) };
+            titleBar.Child = new TextBlock { Text = Loc.T("prop.func.title"), FontSize = 13, FontWeight = FontWeights.Bold, Foreground = Theme.TextPrimary };
             Grid.SetRow(titleBar, 0);
             root.Children.Add(titleBar);
+
+            // 公式栏：输入框（联动主公式框）+ 实时预览
+            var formulaBar = new Grid { Margin = new Thickness(8, 8, 8, 4) };
+            formulaBar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            formulaBar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            formulaBar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
+            var fLabel = new TextBlock
+            {
+                Text = Loc.T("prop.func.formula"),
+                Foreground = Theme.TextSecondary,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 8, 0)
+            };
+            var fInput = new TextBox
+            {
+                Text = st.FormulaTb.Text,
+                FontFamily = new FontFamily("Consolas"),
+                FontSize = 12,
+                Background = Theme.BgBase,
+                Foreground = Theme.TextPrimary,
+                CaretBrush = Theme.TextPrimary,
+                BorderBrush = Theme.BorderSoft,
+                BorderThickness = new Thickness(1),
+                Padding = new Thickness(4, 2, 4, 2),
+                VerticalContentAlignment = VerticalAlignment.Center
+            };
+            var fPreview = new TextBlock
+            {
+                FontSize = 11,
+                Margin = new Thickness(8, 0, 0, 0),
+                TextWrapping = TextWrapping.Wrap,
+                VerticalAlignment = VerticalAlignment.Center,
+                Foreground = Theme.OkGreen
+            };
+            fInput.TextChanged += (s, e) =>
+            {
+                st.FormulaTb.Text = fInput.Text;       // 写回主公式框 → 触发 Preview/Status/Preview
+                UpdateFormulaPreview(st);
+                if (st.FormulaPreview != null)
+                {
+                    fPreview.Text = st.FormulaPreview.Text;
+                    fPreview.Foreground = st.FormulaPreview.Foreground;
+                    fPreview.Visibility = st.FormulaPreview.Visibility;
+                }
+            };
+            Grid.SetColumn(fLabel, 0);
+            Grid.SetColumn(fInput, 1);
+            Grid.SetColumn(fPreview, 2);
+            formulaBar.Children.Add(fLabel);
+            formulaBar.Children.Add(fInput);
+            formulaBar.Children.Add(fPreview);
+            Grid.SetRow(formulaBar, 1);
+            root.Children.Add(formulaBar);
 
             // 主体：左右分栏
             var body = new Grid { Margin = new Thickness(8) };
@@ -936,7 +774,7 @@ namespace Lumen.Ui
             Grid.SetColumn(catList, 0); Grid.SetColumn(fnScroll, 2);
             body.Children.Add(catList);
             body.Children.Add(fnScroll);
-            Grid.SetRow(body, 1);
+            Grid.SetRow(body, 2);
             root.Children.Add(body);
 
             // 底部关闭
@@ -944,28 +782,59 @@ namespace Lumen.Ui
             var closeBtn = new Button { Content = Loc.T("settings.close"), Width = 80, Padding = new Thickness(0, 3, 0, 3) };
             closeBtn.Click += (s, e) => win.Close();
             footer.Children.Add(closeBtn);
-            Grid.SetRow(footer, 2);
+            Grid.SetRow(footer, 3);
             root.Children.Add(footer);
 
-            // 一级菜单：分类
+            // 一级菜单：分类（基于已有公式重组——已用分类置顶并加 ● 标记）
             var categories = FunctionCatalog.All.Select(f => f.Category).Distinct().ToList();
+            // 解析已有公式引用过的函数名（形如 xxx(），不区分大小写）
+            var usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            {
+                var s = st.FormulaTb.Text ?? "";
+                for (int i = 0; i < s.Length; i++)
+                {
+                    if (char.IsLetter(s[i]) || s[i] == '_')
+                    {
+                        int j = i;
+                        while (j < s.Length && (char.IsLetterOrDigit(s[j]) || s[j] == '_')) j++;
+                        if (j < s.Length && s[j] == '(') usedNames.Add(s.Substring(i, j - i));
+                        i = j;
+                    }
+                }
+            }
+            var usedCats = new HashSet<string>(FunctionCatalog.All.Where(f => usedNames.Contains(f.Name)).Select(f => f.Category));
+            var orderedCats = categories.Where(c => usedCats.Contains(c)).Concat(categories.Where(c => !usedCats.Contains(c))).ToList();
+            var catButtons = new List<Button>();
+            void HighlightCat(string cat)
+            {
+                foreach (var b in catButtons)
+                {
+                    var on = (b.Tag as string) == cat;
+                    b.Background = new SolidColorBrush(on ? Theme.BgActive.Color : Theme.BgSurface.Color);
+                    b.Foreground = new SolidColorBrush(on ? Theme.TextPrimary.Color : Theme.TextSecondary.Color);
+                }
+            }
             void ShowFunctions(string cat)
             {
                 fnPanel.Children.Clear();
-                foreach (var fn in FunctionCatalog.All.Where(f => f.Category == cat))
+                // 当前分类下，已用函数置顶
+                foreach (var fn in FunctionCatalog.All.Where(f => f.Category == cat).OrderBy(f => usedNames.Contains(f.Name) ? 0 : 1))
                 {
+                    bool isUsed = usedNames.Contains(fn.Name);
                     var row = new Border
                     {
-                        Background = new SolidColorBrush(Color.FromRgb(0x2D, 0x2D, 0x30)),
-                        BorderBrush = new SolidColorBrush(Color.FromRgb(0x3F, 0x3F, 0x46)),
+                        Background = Theme.BgSurface,
+                        BorderBrush = new SolidColorBrush(isUsed ? Theme.UsedGreen.Color : Theme.BorderDefault.Color),
                         BorderThickness = new Thickness(1),
                         Margin = new Thickness(0, 0, 0, 4),
                         Padding = new Thickness(8, 6, 8, 6),
                         Cursor = Cursors.Hand
                     };
                     var sp = new StackPanel();
+                    if (isUsed)
+                        sp.Children.Add(new TextBlock { Text = "● " + Loc.T("prop.func.used"), FontSize = 10, Foreground = Theme.UsedGreen, Margin = new Thickness(0, 0, 0, 2) });
                     sp.Children.Add(new TextBlock { Text = fn.Sig, Foreground = new SolidColorBrush(Color.FromRgb(0x4E, 0xC9, 0xB0)), FontSize = 12, FontWeight = FontWeights.Bold });
-                    sp.Children.Add(new TextBlock { Text = fn.Desc, Foreground = new SolidColorBrush(Color.FromRgb(0xB0, 0xB0, 0xB0)), FontSize = 10, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) });
+                    sp.Children.Add(new TextBlock { Text = fn.Desc, Foreground = Theme.TextTertiary, FontSize = 10, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) });
                     row.Child = sp;
                     row.MouseLeftButtonUp += (s, e) =>
                     {
@@ -983,26 +852,32 @@ namespace Lumen.Ui
                     fnPanel.Children.Add(row);
                 }
             }
-            foreach (var cat in categories)
+            foreach (var cat in orderedCats)
             {
+                bool isUsed = usedCats.Contains(cat);
                 var b = new Button
                 {
-                    Content = cat,
+                    Content = isUsed ? "● " + cat : cat,
+                    Tag = cat,
+                    FontWeight = isUsed ? FontWeights.Bold : FontWeights.Normal,
                     HorizontalContentAlignment = HorizontalAlignment.Left,
-                    Background = new SolidColorBrush(Color.FromRgb(0x2D, 0x2D, 0x30)),
-                    BorderBrush = new SolidColorBrush(Color.FromRgb(0x3F, 0x3F, 0x46)),
+                    Background = Theme.BgSurface,
+                    BorderBrush = Theme.BorderDefault,
                     Margin = new Thickness(0, 0, 0, 2),
                     Padding = new Thickness(8, 6, 8, 6)
                 };
-                b.Click += (s, e) => ShowFunctions(cat);
+                b.Click += (s, e) => { ShowFunctions(cat); HighlightCat(cat); };
+                catButtons.Add(b);
                 catList.Children.Add(b);
             }
-            ShowFunctions(categories.First());
+            var firstCat = orderedCats.FirstOrDefault(c => usedCats.Contains(c)) ?? orderedCats.First();
+            ShowFunctions(firstCat);
+            HighlightCat(firstCat);
 
             win.Content = new Border
             {
-                Background = new SolidColorBrush(Color.FromRgb(0x1E, 0x1E, 0x1E)),
-                BorderBrush = new SolidColorBrush(Color.FromRgb(0x3F, 0x3F, 0x46)),
+                Background = Theme.BgBase,
+                BorderBrush = Theme.BorderDefault,
                 BorderThickness = new Thickness(1), Child = root
             };
             win.ShowDialog();
@@ -1030,7 +905,7 @@ namespace Lumen.Ui
             if (inner.Contains("mu("))
             {
                 st.FormulaPreview.Text = Loc.T("prop.formula.actionNoPreview");
-                st.FormulaPreview.Foreground = new SolidColorBrush(Color.FromRgb(0x80, 0x80, 0x80));
+                st.FormulaPreview.Foreground = Theme.TextDisabled;
                 st.FormulaPreview.Visibility = Visibility.Visible;
                 return;
             }
@@ -1040,13 +915,13 @@ namespace Lumen.Ui
                 string toEval = inner.Contains("$") ? inner : "$" + inner + "$";
                 var result = _ctx.EvalText(toEval);
                 st.FormulaPreview.Text = Loc.T("prop.formula.result", result);
-                st.FormulaPreview.Foreground = new SolidColorBrush(Color.FromRgb(0x6A, 0xD1, 0x7A));
+                st.FormulaPreview.Foreground = Theme.OkGreen;
                 st.FormulaPreview.Visibility = Visibility.Visible;
             }
             catch (Exception ex)
             {
                 st.FormulaPreview.Text = Loc.T("prop.formula.evalFail", ex.Message.Split('\n')[0]);
-                st.FormulaPreview.Foreground = new SolidColorBrush(Color.FromRgb(0xE5, 0x4B, 0x4B));
+                st.FormulaPreview.Foreground = Theme.ErrRed;
                 st.FormulaPreview.Visibility = Visibility.Visible;
             }
         }
@@ -1058,7 +933,7 @@ namespace Lumen.Ui
             var expr = (st.FormulaTb.Text ?? "").Trim();
             if (expr.Length == 0)
             {
-                st.FormulaTb.BorderBrush = new SolidColorBrush(Color.FromRgb(0x55, 0x55, 0x55));
+                st.FormulaTb.BorderBrush = Theme.BorderSoft;
                 st.FormulaTb.BorderThickness = new Thickness(1);
                 st.FormulaStatus.Visibility = Visibility.Collapsed;
                 return;
@@ -1070,17 +945,17 @@ namespace Lumen.Ui
             {
                 var toks = Lexer.Tokenize(inner);
                 Parser.Parse(toks);
-                st.FormulaTb.BorderBrush = new SolidColorBrush(Color.FromRgb(0x55, 0x55, 0x55));
+                st.FormulaTb.BorderBrush = Theme.BorderSoft;
                 st.FormulaTb.BorderThickness = new Thickness(1);
-                st.FormulaStatus.Foreground = new SolidColorBrush(Color.FromRgb(0x6A, 0xD1, 0x7A));
+                st.FormulaStatus.Foreground = Theme.OkGreen;
                 st.FormulaStatus.Text = Loc.T("prop.formula.valid");
                 st.FormulaStatus.Visibility = Visibility.Visible;
             }
             catch (Exception ex)
             {
-                st.FormulaTb.BorderBrush = new SolidColorBrush(Color.FromRgb(0xE5, 0x4B, 0x4B));
+                st.FormulaTb.BorderBrush = Theme.ErrRed;
                 st.FormulaTb.BorderThickness = new Thickness(1.5);
-                st.FormulaStatus.Foreground = new SolidColorBrush(Color.FromRgb(0xE5, 0x4B, 0x4B));
+                st.FormulaStatus.Foreground = Theme.ErrRed;
                 st.FormulaStatus.Text = Loc.T("prop.formula.error", ex.Message.Split('\n')[0]);
                 st.FormulaStatus.Visibility = Visibility.Visible;
             }

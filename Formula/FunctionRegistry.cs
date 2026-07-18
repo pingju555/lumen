@@ -190,9 +190,26 @@ namespace Lumen.Formula
                 "dur" or "duration" => Value.Of(ctx.Provider.MediaDuration()),
                 "avail" or "available" => Value.Of(ctx.Provider.MediaAvailable()),
                 "state" => Value.Of(ctx.Provider.MediaPlaying() ? "playing" : (ctx.Provider.MediaAvailable() ? "paused" : "stopped")),
-                // cover 返回类型待议（KLWP 为位图），本轮暂不支持，返回空
+                // cover：SMTC 媒体封面主色（dominant 等），无封面返回空串
+                "cover" => CoverValue(a, ctx),
                 _ => Value.Of("")
             };
+        }
+
+        /// <summary>mi(cover[,type])：默认返回封面图片文件路径（供 Image 原子作源）；
+        /// 指定 type(dominant/vibrant/muted/light/dark) 时返回该风格主色 #AARRGGBB。无封面返回空串。</summary>
+        private static Value CoverValue(Value[] a, EvalContext ctx)
+        {
+            string type = a.Length > 1 ? a[1].AsStr().ToLowerInvariant() : "";
+            if (string.IsNullOrEmpty(type))
+            {
+                var path = ctx.Provider.MediaCoverImage();
+                return Value.Of(string.IsNullOrEmpty(path) ? "" : path);
+            }
+            var pal = ctx.Provider.MediaCoverPalette();
+            if (pal == null || pal.Count == 0) return Value.Of("");
+            if (!pal.TryGetValue(type, out uint c)) c = pal["dominant"];
+            return Value.Of("#" + c.ToString("X8"));
         }
 
         // ---------- 数学派发器 mu ----------
@@ -281,10 +298,30 @@ namespace Lumen.Formula
             string type = a.Length > 0 ? a[0].AsStr().ToLowerInvariant() : "dominant";
             string source = a.Length > 1 ? a[1].AsStr().ToLowerInvariant() : "cover";
             uint baseColor;
-            if (source == "cover") baseColor = ctx.Provider.MediaCoverColor();   // 返回 0 表示无封面
-            else if (!ParseArgb(source, out baseColor)) baseColor = 0xFF000000;
+            if (source == "cover")
+            {
+                // cover：经 SMTC 缩略图 + 中位切分得到的真实调色板（已在后台轮询中缓存）
+                var pal = ctx.Provider.MediaCoverPalette();
+                if (pal != null && pal.Count > 0)
+                {
+                    if (!pal.TryGetValue(type, out uint c)) c = pal["dominant"];
+                    return Value.Of("#" + c.ToString("X8"));
+                }
+                baseColor = 0;
+            }
+            else if (!ParseArgb(source, out baseColor))
+            {
+                // source 非 ARGB：当作图片路径/URL，用中位切分提取调色板（自写，无第三方依赖）
+                var pal = PaletteExtractor.Extract(source);
+                if (pal.Count > 0)
+                {
+                    if (!pal.TryGetValue(type, out uint c)) c = pal["dominant"];
+                    return Value.Of("#" + c.ToString("X8"));
+                }
+                return Value.Of("#FF000000");
+            }
             if (baseColor == 0) return Value.Of("#FF000000");
-            // 默认算法：基于基础色做 HSL 派生（中位切分等精确算法待议）
+            // 单色来源：HSL 风格化（原有逻辑）
             ArgbToHsl(baseColor, out double h, out double s, out double l, out double al);
             return Value.Of("#" + HslToArgb(h, DeriveSat(type, s), DeriveLum(type, l), al).ToString("X8"));
         }

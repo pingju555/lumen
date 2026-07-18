@@ -17,7 +17,11 @@ namespace Lumen.Actions
         LockScreen,
         OpenURL,       // Arg = 网址
         Command,       // Arg = 命令行（cmd /c ...）
-        SwitchPreset   // Arg = 预设名(Day/Night/...) 或 +1 / -1（循环套用到全部页面）
+        SwitchPreset,  // Arg = 预设名(Day/Night/...) 或 +1 / -1（循环套用到全部页面）
+        RunFlow,       // Arg = 流程序号(0基)；点击/流程中触发本原子的某个流程
+        SetVar,        // Arg = 变量名|值（值支持 $公式$ / $gv(x)$，实现读写变量）
+        Delay,         // Arg = 毫秒(ms)，流程内延时等待
+        ReadFile       // Arg = 路径|变量名 或 路径|变量名|json字段；读取 txt/json 写入全局变量
     }
 
     /// <summary>

@@ -50,7 +50,9 @@ namespace Lumen.Formula
         bool AppLaunch(int idx);  // idx 0-based
 
         // ---- 调色板 / 外部数据 ----
-        uint MediaCoverColor();        // 当前媒体封面主色（无则 0）；精确提取待议
+        uint MediaCoverColor();        // 当前媒体封面主色(dominant, AARRGGBB；无则 0)
+        Dictionary<string, uint> MediaCoverPalette();  // 当前媒体封面调色板(dominant/vibrant/muted/light/dark；无则 null)
+        string MediaCoverImage();      // 当前媒体封面图片文件路径（供 Image 原子作源；无则空串）
         List<RssItem> RssFetch(string url);   // RSS 拉取（缓存 30 分钟）
     }
 
@@ -174,11 +176,9 @@ namespace Lumen.Formula
         public bool AppLaunch(int idx) => _apps.Launch(idx);
 
         // ---- 调色板 / 外部数据 ----
-        public uint MediaCoverColor()
-        {
-            // TODO: 精确封面主色提取（经 SMTC 缩略图 + 中位切分）待议；当前返回 0（bp 走默认派生）。
-            return 0;
-        }
+        public uint MediaCoverColor() => _media.CoverColor;
+        public Dictionary<string, uint> MediaCoverPalette() => _media.CoverPalette;
+        public string MediaCoverImage() => _media.CoverImagePath;
 
         public List<RssItem> RssFetch(string url)
         {

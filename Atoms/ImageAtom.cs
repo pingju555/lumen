@@ -19,6 +19,7 @@ namespace Lumen.Atoms
         private Image _img;
         private Border _border;
         private TextBlock _placeholder;
+        private string _lastSrc;   // 上一次应用的源路径，仅变化时重载，避免每拍重读磁盘/闪烁
 
         public ImageAtom() : base("Image") { Bounds = new Rect(120, 440, 200, 150); }
 
@@ -54,24 +55,41 @@ namespace Lumen.Atoms
             if (_img == null) return;
             var src = Ctx != null ? Txt(SourceProp, Ctx) : SourceProp.Materialize();
             bool hasImg = !string.IsNullOrWhiteSpace(src) && File.Exists(src);
-            if (hasImg)
+            // 仅当源路径变化时重载位图（mi(cover) 换曲时路径会变），其余每拍只刷新拉伸/圆角等
+            if (src != _lastSrc)
             {
-                try { _img.Source = new System.Windows.Media.Imaging.BitmapImage(new System.Uri(src)); }
-                catch { _img.Source = null; }
-                if (_placeholder != null) _placeholder.Visibility = Visibility.Collapsed;
-                _border.Background = ResolveBrush(BgProp, Ctx, Brushes.Transparent);
+                _lastSrc = src;
+                if (hasImg)
+                {
+                    try { _img.Source = LoadBitmap(src); }
+                    catch { _img.Source = null; }
+                    if (_placeholder != null) _placeholder.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    _img.Source = null;
+                    if (_placeholder != null) _placeholder.Visibility = Visibility.Visible;
+                }
             }
-            else
-            {
-                _img.Source = null;
-                if (_placeholder != null) _placeholder.Visibility = Visibility.Visible;
-                _border.Background = new SolidColorBrush(Color.FromRgb(0x2A, 0x2A, 0x2A));
-            }
+            _border.Background = hasImg
+                ? ResolveBrush(BgProp, Ctx, Brushes.Transparent)
+                : new SolidColorBrush(Color.FromRgb(0x2A, 0x2A, 0x2A));
             if (System.Enum.TryParse<Stretch>(Txt(StretchProp, Ctx), true, out var st))
                 _img.Stretch = st;
             if (double.TryParse(Txt(RadiusProp, Ctx), out var r) && r > 0) _border.CornerRadius = new CornerRadius(r);
             else _border.CornerRadius = new CornerRadius(0);
             ApplyCommon();
+        }
+
+        /// <summary>以 OnLoad 方式加载位图：解码后释放文件句柄，便于封面临时文件被替换/删除而不报错。</summary>
+        private static System.Windows.Media.Imaging.BitmapImage LoadBitmap(string path)
+        {
+            var bmp = new System.Windows.Media.Imaging.BitmapImage();
+            bmp.BeginInit();
+            bmp.UriSource = new System.Uri(path);
+            bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+            bmp.EndInit();
+            return bmp;
         }
 
         public override System.Collections.Generic.Dictionary<string, PropertyValue> GetProps()

@@ -40,11 +40,6 @@ namespace Lumen.Atoms
         private Grid _rootGrid;
         private Thumb _moveThumb;
         private Border _selectionBorder;
-        private bool _pressed;
-        private bool _hover;
-        private const double PressScaleFactor = 0.92;   // 按下时缩放（视觉下沉）
-        private const double HoverScaleFactor = 1.04;   // 悬停时放大（提示可点击）
-        private const double PressOpacityFactor = 0.6;  // 按下时透明度系数
 
         // ---------- 编辑模式点击选中（P6-03） ----------
         /// <summary>选中时触发；传入选中的原子。（容器内子原子冒泡到容器。）</summary>
@@ -108,16 +103,35 @@ namespace Lumen.Atoms
         /// <summary>桌面模式左键点击触发的行为（P5 行为系统）；None 表示无动作。</summary>
         public AtomAction ClickAction { get; set; } = AtomAction.None();
 
-        /// <summary>触发器列表（P5 触发器系统）：满足条件自动执行动作，无需点击。按通用 props 持久化。</summary>
-        public List<AtomTrigger> Triggers = new();
+        /// <summary>流程列表（P5 流程系统）：满足条件自动执行动作序列，无需点击。按通用 props 持久化。</summary>
+        public List<Flow> Flows = new();
 
         // 动画（P5 动画系统 v1：进场 + 循环）
         public PropertyValue AnimEnterProp = new StaticValue("None");
         public PropertyValue AnimLoopProp = new StaticValue("None");
         public PropertyValue AnimEnterDurProp = new StaticValue("400");
         public PropertyValue AnimLoopDurProp = new StaticValue("2000");
+        /// <summary>动画触发条件（布尔公式，留空=无条件自动播放）。条件成立(上升沿)才播放进场→循环；为假则停止并复位。</summary>
+        public PropertyValue AnimWhenProp = new StaticValue("");
+        /// <summary>进度驱动动画配置（JSON，见 ProgressAnimDef）。</summary>
+        public PropertyValue ProgressAnimProp = new StaticValue("");
+        /// <summary>进度动画：触发类型（Timer / Formula / Touch / None）</summary>
+        public PropertyValue ProgressTriggerProp = new StaticValue("None");
+        public PropertyValue ProgressFormulaProp = new StaticValue("");
+        public PropertyValue ProgressDurProp = new StaticValue("1000");
+        public PropertyValue ProgressEasingProp = new StaticValue("linear");
+        public PropertyValue ProgressFadeFromProp = new StaticValue("-1");
+        public PropertyValue ProgressFadeToProp = new StaticValue("-1");
+        public PropertyValue ProgressTxProp = new StaticValue("0");
+        public PropertyValue ProgressTyProp = new StaticValue("0");
+        public PropertyValue ProgressRotProp = new StaticValue("0");
+        public PropertyValue ProgressScaleProp = new StaticValue("-1");
+        private double _progressAnimElapsed;
+        private bool _progressAnimRunning;
+        private bool _progressAnimTouchPending;
         private UIElement _animHost;
         private System.Windows.Media.Animation.Storyboard _enterSb, _loopSb;
+        private bool _animActive;   // 条件驱动：当前是否处于"播放中"（用于边沿检测，避免每拍重置循环）
 
         /// <summary>九宫格锚点定位（画布模式）：默认左上角，与 XY 偏移组合决定实际像素坐标。</summary>
         public PropertyValue AnchorProp = new StaticValue("TopLeft");
@@ -221,6 +235,9 @@ namespace Lumen.Atoms
                 new EditField { Key = "animLoop",  Label = Loc.T("atom.label.animLoop"),  Kind = EditKind.Choice, Tab = "animation", Choices = new[] { "None", "Pulse", "Rotate", "Blink", "Float", "Bounce" } },
                 new EditField { Key = "animEnterDur", Label = Loc.T("atom.label.animEnterDur"), Kind = EditKind.Number, Tab = "animation", Min = 0, Max = 10000 },
                 new EditField { Key = "animLoopDur",  Label = Loc.T("atom.label.animLoopDur"),  Kind = EditKind.Number, Tab = "animation", Min = 100, Max = 60000 },
+                new EditField { Key = "animWhen", Label = Loc.T("atom.label.animWhen"), Kind = EditKind.Text, Tab = "animation", Hint = Loc.T("atom.hint.animWhen") },
+                // PROGRESS ANIM FIELDS REMOVED FOR DEBUGGING
+                // LAYER TAB REMOVED FOR DEBUGGING
             };
             if (ShowSizeFields)
             {
@@ -240,19 +257,20 @@ namespace Lumen.Atoms
             var list = new List<TabSpec>
             {
                 new TabSpec { Key = "content", LocKey = "prop.tab.content" },
-                new TabSpec { Key = "style",   LocKey = "prop.tab.style" },
-                new TabSpec { Key = "layout",  LocKey = "prop.tab.layout" },
-                new TabSpec { Key = "animation", LocKey = "prop.tab.anim" },
+                new TabSpec { Key = "style",   LocKey = "prop.tab.paint" },
+                new TabSpec { Key = "layer",   LocKey = "prop.tab.layer" },
+                new TabSpec { Key = "layout",  LocKey = "prop.tab.position" },
+                new TabSpec { Key = "animation", LocKey = "prop.tab.animation" },
             };
-            if (SupportsInteraction) list.Add(new TabSpec { Key = "interaction", LocKey = "prop.tab.interaction" });
-            if (SupportsTrigger) list.Add(new TabSpec { Key = "trigger", LocKey = "prop.tab.trigger" });
+            if (SupportsInteraction) list.Add(new TabSpec { Key = "interaction", LocKey = "prop.tab.touch" });
+            if (SupportsFlow) list.Add(new TabSpec { Key = "flow", LocKey = "prop.tab.flow" });
             return list;
         }
 
         /// <summary>是否显示「交互」标签页（点击动作）。默认 true；纯展示原子可重写返回 false 关闭。</summary>
         public virtual bool SupportsInteraction => true;
-        /// <summary>是否显示「触发器」标签页（条件→动作）。默认 true；不需要的原子可重写返回 false 关闭。</summary>
-        public virtual bool SupportsTrigger => true;
+        /// <summary>是否显示「流程」标签页（条件→动作序列）。默认 true；不需要的原子可重写返回 false 关闭。</summary>
+        public virtual bool SupportsFlow => true;
 
         public abstract UIElement Render();
         public virtual void Update() { ApplySize(); }
@@ -289,7 +307,6 @@ namespace Lumen.Atoms
             grid.Children.Add(content);
             _rootGrid = grid;
             ApplyEditModeTo(grid);
-            WireClickFeedback(grid);
 
             // 选中 Border 包裹
             _selectionBorder = new Border
@@ -325,36 +342,7 @@ namespace Lumen.Atoms
             return wrapper;
         }
 
-        /// <summary>为桌面模式绑定点击动作的原子添加悬停光标反馈（Hand 光标）。</summary>
-        private void WireClickFeedback(Grid grid)
-        {
-            grid.MouseEnter += (s, e) =>
-            {
-                if (EditMode) return;
-                if (ClickAction != null && ClickAction.Kind != ActionKind.None)
-                {
-                    _hover = true;
-                    grid.Cursor = Cursors.Hand;
-                    ApplyCommon();
-                }
-            };
-            grid.MouseLeave += (s, e) =>
-            {
-                if (_hover)
-                {
-                    _hover = false;
-                    grid.Cursor = Cursors.Arrow;
-                    ApplyCommon();
-                }
-                if (_pressed)
-                {
-                    _pressed = false;
-                    ApplyCommon();
-                }
-            };
-        }
-
-        /// <summary>完整交互层：移动 Thumb + 8 缩放手柄 + 悬停/按下反馈。仅供 Standalone 模式使用。</summary>
+        /// <summary>完整交互层：移动 Thumb + 8 缩放手柄。仅供 Standalone 模式使用。</summary>
         private Grid FullDraggable(UIElement content)
         {
             var grid = new Grid
@@ -419,33 +407,6 @@ namespace Lumen.Atoms
             _rootGrid = grid;
             ApplyEditModeTo(grid);
 
-            // 鼠标悬停反馈：编辑态无特殊处理；桌面模式有动作时变 Hand 光标
-            grid.MouseEnter += (s, e) =>
-            {
-                if (EditMode) return;
-                if (ClickAction != null && ClickAction.Kind != ActionKind.None)
-                {
-                    _hover = true;
-                    if (_moveThumb != null) _moveThumb.Cursor = Cursors.Hand;
-                    grid.Cursor = Cursors.Hand;
-                    ApplyCommon();
-                }
-            };
-            grid.MouseLeave += (s, e) =>
-            {
-                if (_hover)
-                {
-                    _hover = false;
-                    if (_moveThumb != null) _moveThumb.Cursor = Cursors.SizeAll;
-                    grid.Cursor = Cursors.Arrow;
-                    ApplyCommon();
-                }
-                if (_pressed)
-                {
-                    _pressed = false;
-                    ApplyCommon();
-                }
-            };
             // 选中 Border 包裹
             _selectionBorder = new Border { Child = grid, SnapsToDevicePixels = true };
             var wrapper = new Grid { Background = Brushes.Transparent };
@@ -480,30 +441,17 @@ namespace Lumen.Atoms
             // P6-03: 已移除缩放手柄，不再需要调用 SetHandlesVisible
             grid.ContextMenu = ContextMenuFactory?.Invoke(this);
 
-            // 移动手柄光标：编辑态/无动作=SizeAll（可拖拽）；桌面态+有动作=Hand（可点击）
+            // 移动手柄光标：编辑态用于拖拽
             if (_moveThumb != null)
-                _moveThumb.Cursor = (EditMode || !hasAction) ? Cursors.SizeAll : Cursors.Hand;
-
-            // 切换模式时清掉交互态（悬停/按下），避免残留视觉
-            _pressed = false;
-            _hover = false;
+                _moveThumb.Cursor = Cursors.SizeAll;
 
             // 仅桌面模式 + 有动作时挂点击；编辑模式不挂（点击用于拖拽/选中）。
             grid.MouseLeftButtonUp -= OnClickAction;
-            grid.MouseLeftButtonDown -= OnPressDown;
             if (!EditMode && hasAction)
             {
-                grid.MouseLeftButtonDown += OnPressDown;
                 grid.MouseLeftButtonUp += OnClickAction;
             }
             ApplyCommon();
-        }
-
-        private void OnPressDown(object sender, MouseButtonEventArgs e)
-        {
-            if (EditMode) return;
-            if (ClickAction == null || ClickAction.Kind == ActionKind.None) return;
-            if (!_pressed) { _pressed = true; ApplyCommon(); }
         }
 
         private void OnClickAction(object sender, MouseButtonEventArgs e)
@@ -511,33 +459,31 @@ namespace Lumen.Atoms
             if (EditMode) return;
             if (ClickAction == null || ClickAction.Kind == ActionKind.None) return;
             e.Handled = true;
-            _pressed = false;
-            ApplyCommon();
-            ActionRunner.Run(ClickAction);
+            _ = ActionRunner.RunAsync(ClickAction, this);
         }
 
         /// <summary>切换模式后刷新本原子交互态（由宿主遍历调用）。</summary>
         public void ApplyEditMode() => ApplyEditModeTo(_root as Grid);
 
         /// <summary>
-        /// 触发器系统（P5）：每个评估周期检查本原子所有触发器，条件成立即自动触发对应动作（无需点击）。
+        /// 流程系统（P5）：每个评估周期检查本原子所有流程，条件成立即自动触发对应动作序列（无需点击）。
         /// 仅在桌面模式运行（编辑模式下不触发，避免误触把用户拽出编辑态）。
         /// 由 DirtyScheduler.Tick 对全部原子（含容器子原子）调用。
         /// </summary>
-        public void EvaluateTriggers()
+        public void EvaluateFlows()
         {
             if (EditMode) return;
-            if (Ctx == null || Triggers == null || Triggers.Count == 0) return;
-            foreach (var t in Triggers)
+            if (Ctx == null || Flows == null || Flows.Count == 0) return;
+            foreach (var t in Flows)
             {
                 try
                 {
                     if (t.ShouldFire(Ctx))
-                        ActionRunner.RunAll(t.Actions);
+                        _ = ActionRunner.RunAllAsync(t.Actions, this);
                 }
                 catch (Exception ex)
                 {
-                    Logger.Log("EvaluateTriggers failed: " + (t.Condition ?? "") + " -> " + ex.Message);
+                    Logger.Log("EvaluateFlows failed: " + (t.Condition ?? "") + " -> " + ex.Message);
                 }
             }
         }
@@ -564,40 +510,192 @@ namespace Lumen.Atoms
             if (_root == null) return;
             double op = 1.0;
             if (double.TryParse(Txt(OpacityProp, Ctx), out var o)) op = Math.Max(0, Math.Min(1, o));
-            if (_pressed) op *= PressOpacityFactor;
             _root.Opacity = op;
             UpdateTransform();
         }
 
         /// <summary>
-        /// 组合渲染变换：旋转（属性）+ 交互态缩放（桌面模式悬停放大 / 按下缩小）。
-        /// 用一个 TransformGroup 同时承载，避免互相覆盖；每次 ApplyCommon 重算，
-        /// 因此被 ~1s 的增量刷新（Update）调用也不会丢失/漂移交互态。
+        /// 组合渲染变换：仅旋转（属性）。用一个 TransformGroup 承载，避免与动画层冲突。
         /// </summary>
         private void UpdateTransform()
         {
             if (_root is not FrameworkElement fe) return;
-            // 容器(auto-size) 用实际测量尺寸作旋转/缩放中心；非容器用 Bounds 尺寸
+            // 容器(auto-size) 用实际测量尺寸作旋转中心；非容器用 Bounds 尺寸
             double w = (AutoSize && fe.ActualWidth > 0) ? fe.ActualWidth : Bounds.Width;
             double h = (AutoSize && fe.ActualHeight > 0) ? fe.ActualHeight : Bounds.Height;
             var tg = new TransformGroup();
             if (double.TryParse(Txt(RotationProp, Ctx), out var r) && r != 0)
                 tg.Children.Add(new RotateTransform(r, w / 2, h / 2));
-            double s = 1.0;
-            if (!EditMode && _hover && !_pressed) s = HoverScaleFactor;
-            else if (_pressed) s = PressScaleFactor;
-            if (s != 1.0)
-                tg.Children.Add(new ScaleTransform(s, s, w / 2, h / 2));
             fe.RenderTransform = tg;
         }
 
         /// <summary>
         /// 动画系统 v1（P5）：进场 + 循环。作用于内容内层 _animHost（与 _root 的交互/旋转变换分层，互不冲突）。
-        /// 在 MakeDraggable 末尾调用——每次 Render（含切页重组）都会重播进场，循环则持续运行。
+        /// 在 MakeDraggable 末尾调用；也由 DirtyScheduler 每拍调用（仅当配置了 animWhen 条件，见 TickAnimation）。
+        /// 无条件(animWhen 留空)：每次 Render 重播进场 + 循环（原行为）。
+        /// 有条件：条件成立(上升沿)才播放进场→循环；条件为假则停止并复位到中性姿态。
         /// </summary>
         private void PlayAnimations()
         {
             if (_animHost is not FrameworkElement host) return;
+            var when = (AnimWhenProp?.Materialize() ?? "").Trim();
+            if (string.IsNullOrEmpty(when))
+            {
+                // 无条件：原行为，每次 Render 重播进场 + 循环
+                StartAnimationSequence(host);
+                _animActive = true;
+                return;
+            }
+            // 有条件：按条件起停（用 _animActive 做边沿检测，避免每拍重置循环）
+            bool cond = EvalAnimWhen(when);
+            if (cond && !_animActive) { StartAnimationSequence(host); _animActive = true; }
+            else if (!cond && _animActive) { StopAnimation(host); _animActive = false; }
+            // cond&&active：保持循环；!cond&&!active：保持静止
+        }
+
+        /// <summary>每拍重估动画触发条件（由 DirtyScheduler 调用）。仅当配置了条件时才干预起停，
+        /// 否则由 Render 的自动播放负责；内部 _animActive 守卫保证循环不被重置。</summary>
+        public void TickAnimation()
+        {
+            if (_animHost == null) return;
+            var when = (AnimWhenProp?.Materialize() ?? "").Trim();
+            if (string.IsNullOrEmpty(when)) return;
+            PlayAnimations();
+        }
+
+        /// <summary>每拍执行进度驱动动画。</summary>
+        public void TickProgressAnimation()
+        {
+            if (_animHost is not FrameworkElement host) return;
+            var trigger = (ProgressTriggerProp?.Materialize() ?? "None").Trim();
+            if (trigger == "None") return;
+
+            double progress = 0;
+            switch (trigger)
+            {
+                case "Timer":
+                    if (!double.TryParse(ProgressDurProp?.Materialize() ?? "1000", out var dur)) dur = 1000;
+                    _progressAnimElapsed += 16; // approx 60fps tick
+                    if (_progressAnimElapsed >= dur)
+                    {
+                        progress = 1;
+                        _progressAnimElapsed = 0;
+                    }
+                    else progress = _progressAnimElapsed / dur;
+                    break;
+
+                case "Formula":
+                    var formula = (ProgressFormulaProp?.Materialize() ?? "").Trim();
+                    if (!string.IsNullOrEmpty(formula) && Ctx != null)
+                    {
+                        try
+                        {
+                            var raw = formula.StartsWith("$") && formula.EndsWith("$") && formula.Length >= 2
+                                ? formula.Substring(1, formula.Length - 2) : formula;
+                            progress = Math.Clamp(Ctx.Eval(raw).AsNum() / 100.0, 0, 1);
+                        }
+                        catch { progress = 0; }
+                    }
+                    break;
+
+                case "Touch":
+                    if (_progressAnimTouchPending)
+                    {
+                        _progressAnimTouchPending = false;
+                        _progressAnimElapsed = 0;
+                        _progressAnimRunning = true;
+                    }
+                    if (_progressAnimRunning)
+                    {
+                        if (!double.TryParse(ProgressDurProp?.Materialize() ?? "1000", out var td)) td = 1000;
+                        _progressAnimElapsed += 16;
+                        progress = Math.Min(_progressAnimElapsed / td, 1);
+                        if (progress >= 1) _progressAnimRunning = false;
+                    }
+                    break;
+            }
+
+            ApplyProgressAnim(host, progress);
+        }
+
+        private void ApplyProgressAnim(FrameworkElement host, double progress)
+        {
+            if (host == null) return;
+            var easing = (ProgressEasingProp?.Materialize() ?? "linear").Trim();
+            double p = ApplyEasing(progress, easing);
+
+            var (t, s, r) = EnsureTransforms(host);
+
+            // Fade
+            if (double.TryParse(ProgressFadeFromProp?.Materialize() ?? "-1", out var ff) && ff >= 0
+                && double.TryParse(ProgressFadeToProp?.Materialize() ?? "-1", out var ft) && ft >= 0)
+                host.Opacity = Lerp(ff, ft, p);
+
+            // Translate
+            if (double.TryParse(ProgressTxProp?.Materialize() ?? "0", out var tx))
+                t.X = Lerp(0, tx, p);
+            if (double.TryParse(ProgressTyProp?.Materialize() ?? "0", out var ty))
+                t.Y = Lerp(0, ty, p);
+
+            // Rotate
+            if (double.TryParse(ProgressRotProp?.Materialize() ?? "0", out var rot))
+                r.Angle = Lerp(0, rot, p);
+
+            // Scale
+            if (double.TryParse(ProgressScaleProp?.Materialize() ?? "-1", out var sc) && sc >= 0)
+            {
+                s.ScaleX = Lerp(1, sc, p);
+                s.ScaleY = Lerp(1, sc, p);
+            }
+        }
+
+        private static double ApplyEasing(double t, string easing)
+        {
+            return easing.ToLowerInvariant() switch
+            {
+                "easein" => t * t,
+                "easeout" => t * (2 - t),
+                "easeinout" => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
+                "bounce" => Bounce(t),
+                "overshoot" => Overshoot(t),
+                _ => t
+            };
+        }
+
+        private static double Bounce(double t)
+        {
+            if (t < 1 / 2.75) return 7.5625 * t * t;
+            if (t < 2 / 2.75) { t -= 1.5 / 2.75; return 7.5625 * t * t + 0.75; }
+            if (t < 2.5 / 2.75) { t -= 2.25 / 2.75; return 7.5625 * t * t + 0.9375; }
+            t -= 2.625 / 2.75; return 7.5625 * t * t + 0.984375;
+        }
+
+        private static double Overshoot(double t) => t < 0.5 ? 2 * t * t * (2.5 * t - 0.5) : (1 - 2 * (1 - t) * (1 - t) * (2.5 * (1 - t) - 0.5));
+
+        private static double Lerp(double a, double b, double t) => a + (b - a) * t;
+
+        /// <summary>触发进度动画（Touch 模式从 Click 动作调用）。</summary>
+        public void TriggerProgressAnim()
+        {
+            var trigger = (ProgressTriggerProp?.Materialize() ?? "None").Trim();
+            if (trigger == "Touch")
+                _progressAnimTouchPending = true;
+        }
+
+        /// <summary>求值动画触发条件（布尔公式，支持 $公式$ / gv: / 字面量，与触发器条件同约定）。</summary>
+        private bool EvalAnimWhen(string when)
+        {
+            if (Ctx == null) return false;
+            var raw = when.Trim();
+            if (raw.StartsWith("$") && raw.EndsWith("$") && raw.Length >= 2)
+                raw = raw.Substring(1, raw.Length - 2);
+            try { return Ctx.Eval(raw).AsBool(); }
+            catch { return false; }
+        }
+
+        /// <summary>复位到中性姿态并（重）构建进场+循环动画，立即播放进场。</summary>
+        private void StartAnimationSequence(FrameworkElement host)
+        {
             _enterSb?.Stop(); _loopSb?.Stop();
             host.Opacity = 1;
             var (t, s, r) = EnsureTransforms(host);
@@ -644,6 +742,15 @@ namespace Lumen.Atoms
             {
                 StartLoopAnimation(loop, loopDur);
             }
+        }
+
+        /// <summary>停止所有动画并将 _animHost 复位到中性姿态（条件为假时调用）。</summary>
+        private void StopAnimation(FrameworkElement host)
+        {
+            _enterSb?.Stop(); _loopSb?.Stop();
+            host.Opacity = 1;
+            var (t, s, r) = EnsureTransforms(host);
+            t.X = 0; t.Y = 0; s.ScaleX = 1; s.ScaleY = 1; r.Angle = 0;
         }
 
         private void StartLoopAnimation(string loop, double loopDur)
@@ -734,11 +841,22 @@ namespace Lumen.Atoms
             d["opacity"] = OpacityProp;
             d["rotation"] = RotationProp;
             d["click"] = new StaticValue(ClickAction.Serialize());
-            d["triggers"] = new StaticValue(AtomTrigger.SerializeList(Triggers));
+            d["triggers"] = new StaticValue(Flow.SerializeList(Flows));
             d["animEnter"] = AnimEnterProp;
             d["animLoop"] = AnimLoopProp;
             d["animEnterDur"] = AnimEnterDurProp;
             d["animLoopDur"] = AnimLoopDurProp;
+            d["animWhen"] = AnimWhenProp;
+            d["progressTrigger"] = ProgressTriggerProp;
+            d["progressFormula"] = ProgressFormulaProp;
+            d["progressDur"] = ProgressDurProp;
+            d["progressEasing"] = ProgressEasingProp;
+            d["progressFadeFrom"] = ProgressFadeFromProp;
+            d["progressFadeTo"] = ProgressFadeToProp;
+            d["progressTx"] = ProgressTxProp;
+            d["progressTy"] = ProgressTyProp;
+            d["progressRot"] = ProgressRotProp;
+            d["progressScale"] = ProgressScaleProp;
             d["width"] = WidthProp ?? new StaticValue(Bounds.Width.ToString("0"));
             d["height"] = HeightProp ?? new StaticValue(Bounds.Height.ToString("0"));
         }
@@ -756,11 +874,22 @@ namespace Lumen.Atoms
             if (props.TryGetValue("opacity", out var o)) OpacityProp = o;
             if (props.TryGetValue("rotation", out var r)) RotationProp = r;
             if (props.TryGetValue("click", out var c)) ClickAction = AtomAction.Parse(c.Materialize());
-            if (props.TryGetValue("triggers", out var tr)) Triggers = AtomTrigger.ParseList(tr.Materialize()) ?? new List<AtomTrigger>();
+            if (props.TryGetValue("triggers", out var tr)) Flows = Flow.ParseList(tr.Materialize()) ?? new List<Flow>();
             if (props.TryGetValue("animEnter", out var ae)) AnimEnterProp = ae;
             if (props.TryGetValue("animLoop", out var al)) AnimLoopProp = al;
             if (props.TryGetValue("animEnterDur", out var aed)) AnimEnterDurProp = aed;
             if (props.TryGetValue("animLoopDur", out var ald)) AnimLoopDurProp = ald;
+            if (props.TryGetValue("animWhen", out var aw)) AnimWhenProp = aw;
+            if (props.TryGetValue("progressTrigger", out var pt)) ProgressTriggerProp = pt;
+            if (props.TryGetValue("progressFormula", out var pf)) ProgressFormulaProp = pf;
+            if (props.TryGetValue("progressDur", out var pd)) ProgressDurProp = pd;
+            if (props.TryGetValue("progressEasing", out var pe)) ProgressEasingProp = pe;
+            if (props.TryGetValue("progressFadeFrom", out var pff)) ProgressFadeFromProp = pff;
+            if (props.TryGetValue("progressFadeTo", out var pft)) ProgressFadeToProp = pft;
+            if (props.TryGetValue("progressTx", out var ptx)) ProgressTxProp = ptx;
+            if (props.TryGetValue("progressTy", out var pty)) ProgressTyProp = pty;
+            if (props.TryGetValue("progressRot", out var pro)) ProgressRotProp = pro;
+            if (props.TryGetValue("progressScale", out var psc)) ProgressScaleProp = psc;
             if (props.TryGetValue("width", out var w)) WidthProp = w;
             if (props.TryGetValue("height", out var h)) HeightProp = h;
             ApplySize();

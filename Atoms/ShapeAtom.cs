@@ -490,8 +490,15 @@ namespace Lumen.Atoms
             l.Add(new EditField { Key = "endAngle", Label = Loc.T("atom.label.endAngle"), Kind = EditKind.Number, Min = -360, Max = 360, Hint = Loc.T("atom.hint.angle"), ShowIfKey = "kind", ShowIfValues = new[] { "Sector", "Arc" } });
             l.Add(new EditField { Key = "pathData", Label = Loc.T("atom.label.pathData"), Kind = EditKind.Text, Hint = Loc.T("atom.hint.pathData"), ShowIfKey = "kind", ShowIfValues = new[] { "Path" } });
             l.Add(new EditField { Key = "shadow", Label = Loc.T("atom.label.shadow"), Kind = EditKind.Bool, Tab = "style" });
-            l.Add(new EditField { Key = "texture", Label = Loc.T("atom.label.texture"), Kind = EditKind.Choice, Choices = new[] { "None", "Frosted", "Glass", "Plastic", "Metal", "Neon", "Matte", "Wood", "Marble", "Carbon", "Holographic", "Paper", "Fabric", "Liquid" }, ChoiceLocPrefix = "atom.texture.", Hint = Loc.T("atom.hint.textureColor"), Tab = "style" });
+            l.Add(new EditField { Key = "texture", Label = Loc.T("atom.label.texture"), Kind = EditKind.Choice, Choices = new[] { "None", "Frosted", "Glass", "Plastic", "Metal", "Neon", "Matte", "Wood", "Marble", "Carbon", "Holographic", "Paper", "Fabric", "Liquid" }, ChoiceLocPrefix = "atom.texture.", Hint = Loc.T("atom.hint.textureColor"), Tab = "texture" });
             return l;
+        }
+
+        public override List<TabSpec> EditTabs()
+        {
+            var list = base.EditTabs();
+            list.Insert(2, new TabSpec { Key = "texture", LocKey = "prop.tab.texture" });
+            return list;
         }
     }
 }
