@@ -1,0 +1,43 @@
+<UserControl x:Class="Lumen.Ui.GvManagerPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:Lumen.I18n"
+             Background="Transparent">
+    <Border Background="{StaticResource BgBase}" BorderBrush="{StaticResource BorderDefault}" BorderThickness="1"
+            CornerRadius="{StaticResource RadiusOuter}" Padding="0" Width="420" MaxHeight="540">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- 标题栏（X 关闭） -->
+            <Border Grid.Row="0" Background="{StaticResource BgSurface}" CornerRadius="8,8,0,0"
+                    Padding="10,6" MouseLeftButtonDown="Header_MouseDown">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{loc:Loc gv.title}" FontSize="13" FontWeight="Bold" Foreground="{StaticResource TextPrimary}"/>
+                    <Button Grid.Column="1" Content="✕" Width="24" Height="22" FontSize="12"
+                            Padding="0" Click="CloseBtn_Click" ToolTip="{loc:Loc settings.close}"/>
+                </Grid>
+            </Border>
+
+            <TextBlock Grid.Row="1" Text="{loc:Loc gv.desc}"
+                       FontSize="10" Foreground="{StaticResource TextTertiary}" TextWrapping="Wrap" Margin="14,8,14,8"/>
+
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" MaxHeight="380" Margin="14,0,14,0">
+                <StackPanel x:Name="List" Orientation="Vertical"/>
+            </ScrollViewer>
+
+            <Border Grid.Row="3" Background="{StaticResource BgSunken}" CornerRadius="0,0,8,8" Padding="14,8">
+                <Button x:Name="AddBtn" Content="{loc:Loc gv.add}" HorizontalAlignment="Left" Padding="10,4"
+                        Click="AddBtn_Click"/>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>

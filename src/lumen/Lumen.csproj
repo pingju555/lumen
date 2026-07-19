@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.22621.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>lumen</AssemblyName>
+    <RootNamespace>Lumen</RootNamespace>
+    <ApplicationIcon>lumen.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Icons\*.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Render\BlendModes.ps">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 语言包：随程序目录发布；用户/社区可在 %LocalAppData%/Lumen/lang 覆盖 -->
+    <Content Include="lang\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 内置使用手册种子档（多语言）：嵌入程序集，资源名 Lumen.Resources.help_manual(.en-GB).json -->
+    <EmbeddedResource Include="Resources\help_manual.json" />
+    <EmbeddedResource Include="Resources\help_manual.en-GB.json" />
+  </ItemGroup>
+
+</Project>

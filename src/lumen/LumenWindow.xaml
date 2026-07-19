@@ -1,0 +1,27 @@
+<Window x:Class="Lumen.LumenWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:Lumen.I18n"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        Topmost="False"
+        ResizeMode="NoResize"
+        ShowActivated="False"
+        WindowState="Normal"
+        Title="{loc:Loc main.title}">
+    <Grid x:Name="RootGrid" Background="Transparent">
+        <!-- 页容器：LayerStack 挂载三类预设层（壁纸/网格/画布），按当前页重组 -->
+        <Grid x:Name="PageHost" Background="Transparent"/>
+        <!-- 标尺层：顶部/左侧 px 刻度，不接收交互 -->
+        <Canvas x:Name="RulerLayer" IsHitTestVisible="False"/>
+        <!-- 页面指示器：底部圆点，可点击切换（P3-03） -->
+        <StackPanel x:Name="PageIndicator" Orientation="Horizontal"
+                    HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                    Margin="0,0,0,12" IsHitTestVisible="True"/>
+        <!-- 状态 HUD：观测用，不接收交互 -->
+        <TextBlock x:Name="StatusHud" HorizontalAlignment="Left" VerticalAlignment="Top"
+                   Margin="10,8,0,0" Foreground="#FF9AA0A6" FontSize="11" IsHitTestVisible="False" Text=""/>
+    </Grid>
+</Window>
