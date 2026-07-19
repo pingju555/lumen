@@ -65,6 +65,14 @@ dotnet build -c Release
 - Profile management: `right-click menu` → Profiles…
 - UI language: `right-click menu` → Settings → Language
 
+## Download & Run (Release package)
+
+Download `Lumen-<version>-win-x64.zip` from GitHub Releases, extract and run `lumen.exe` directly.
+
+**Runtime dependency**: the target machine must have **.NET 8 Desktop Runtime** (with WPF / WinForms) installed. Without it, the app fails to start; download: <https://dotnet.microsoft.com/download/dotnet/8.0>.
+
+> The package is framework-dependent: the .NET 8 runtime is excluded, but the WinRT interop projection layer required by the app (`Microsoft.Windows.SDK.NET.dll` etc.) is included — no extra install needed.
+
 ## Project Structure
 
 ```

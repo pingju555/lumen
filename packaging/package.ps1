@@ -1,13 +1,17 @@
 <#
 .SYNOPSIS
-  Lumen 便携版打包脚本：自包含发布 win-x64，扁平压缩为 ZIP（根目录即 lumen.exe）。
+  Lumen 便携版打包脚本：framework-dependent 发布 win-x64，扁平压缩为 ZIP（根目录即 lumen.exe）。
 
 .DESCRIPTION
-  - dotnet publish --self-contained（捆绑 .NET 8 运行时，用户免装）
+  - dotnet publish --self-contained false（不捆绑 .NET 8 运行时，用户机需预装 .NET 8 Desktop Runtime）
   - 不压缩成单文件（避免 WPF/WinRT 裁剪问题），产物为扁平文件夹，lumen.exe 在根
   - 移除 *.pdb 减小体积（发布包不含调试符号）
   - 压缩 staging 目录内容，使解压后 exe 位于顶层
   - 输出 SHA256 便于发布校验
+
+.NOTES
+  依赖：目标机须安装 .NET 8 Desktop Runtime（含 WPF/WinForms）。WinRT 投影层
+        （Microsoft.Windows.SDK.NET.dll / WinRT.Runtime.dll）是应用直接引用，仍随包。
 
 .NOTES
   产物：<repo>/dist/Lumen-<version>-win-x64.zip
@@ -42,8 +46,8 @@ $zipPath = Join-Path (Join-Path $root $OutputDir) $zipName
 if (Test-Path $staging) { Remove-Item $staging -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $staging | Out-Null
 
-Write-Host "[1/4] Publishing self-contained $Runtime (v$Version) ..."
-& dotnet publish "$proj" -c $Configuration -r $Runtime --self-contained true -o "$staging"
+Write-Host "[1/4] Publishing framework-dependent $Runtime (v$Version) ..."
+& dotnet publish "$proj" -c $Configuration -r $Runtime --self-contained false -o "$staging"
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed (exit $LASTEXITCODE)" }
 
 # 去除调试符号

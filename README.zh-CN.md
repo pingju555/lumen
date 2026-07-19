@@ -65,6 +65,14 @@ dotnet build -c Release
 - 配置档管理：`右键菜单` → 配置档…
 - 界面语言：`右键菜单` → 设置 → 语言
 
+## 下载与运行（Release 包）
+
+从 GitHub Releases 下载 `Lumen-<版本>-win-x64.zip`，解压后直接运行 `lumen.exe`。
+
+**运行依赖**：目标机须安装 **.NET 8 Desktop Runtime**（含 WPF / WinForms）。未安装会在启动时报错；下载地址：<https://dotnet.microsoft.com/download/dotnet/8.0>。
+
+> 包体为 framework-dependent：已排除 .NET 8 运行时，但包含应用运行必需的 WinRT 互操作投影层（`Microsoft.Windows.SDK.NET.dll` 等），无需额外安装。
+
 ## 目录结构
 
 ```
