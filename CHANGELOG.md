@@ -13,7 +13,7 @@
 
 ### 修复
 - **内置「使用手册」启动即刷新** — `ConfigStore.LoadActive()` 原先仅在首次运行/无配置档时调用 `InstallBuiltinManual()`；已安装用户走另一分支直接 `Load(active)`，**从不重新安装**，导致旧 `profiles/使用手册.json` 永不被 v2.1 覆盖（表现为「新手册没加载」）。现每次启动先 `RefreshBuiltinManual()`（仅覆盖文件、不切激活档），激活档若为手册则自然读到最新版；语言切换路径 `RefreshManualIfActive()` 仍按 `Loc.Cur` 覆盖写入对应语言版
-- **属性窗口（PropWindow）接入 ChromeWindow 统一框架** — PropWindow 此前是唯一的自定义 inline chrome 窗口（标题栏/底部操作栏各自实现），与设置/配置档/页面背景三窗口风格割裂。现继承 `ChromeWindow`：共享标题栏（14×14 蓝色方块 + 13px 标题 + 关闭钮）、内容区 16,12 留白、底部 `FooterContent` 操作栏（取消选定/取消/应用，按钮样式对齐 ProfileWindow）。同步为 `ChromeWindow` 补**无边框缩放**支持（`WM_NCHITTEST` 命中测试，仅 `ResizeMode=CanResize` 启用，NoResize 窗口不受影响），使属性窗口既可统一外观又保留可调整大小
+- **窗框统一方向修正（向 PropWindow 看齐）** — 此前误将 PropWindow 改为继承 `ChromeWindow`（=向设置窗口方向统一：标题栏 36 / 14×14 蓝色方块 / 13px 标题 / 底部 `BgSunken` 圆角），与原始 PropWindow 轻量风格割裂。现把**共享窗框 `ChromeWindow` 的指标调回原始 PropWindow**：标题栏高 `36→32`（`ChromeTitleBarHeight`）、方块 `14×14 r3→12×12 r2`、标题 `13→12`、✕ 关闭钮 `24×22/12→22×20/11`、底部操作栏 `BgSunken` 圆角 → `BgSurface` 方角 + `8,6` 内边距 + 顶部分隔线（`BorderThickness 0,1,0,0`）；`ChromeWindow.GetTitleBarHeight()` 回退默认 `36→32`。设置/配置档/页面背景/属性四窗统一向 PropWindow 看齐（`WM_NCHITTEST` 无边框缩放仍仅 `ResizeMode=CanResize` 启用）
 - **配置默认位置改为便携（随 exe）** — `Core/LumenPaths.DefaultDataDir` 由 `%LocalAppData%/Lumen` 改为**程序（exe）所在文件夹**。即 zip 解压到哪，配置（profiles/config/settings/lang）与日志就落在哪（exe 旁），实现真正的便携运行，无需安装、不写系统目录。`lumen.location` 指针文件仍位于 exe 旁，用于重定向到任意其它文件夹（设置 → 数据存储位置一键迁移）。`Core/Logger` 回退由 `%TEMP%/lumen.log` 改为 `<exe 文件夹>/lumen.log`，与便携默认根一致。`App.MaybeAutoMigrate` 增加旧 `%LocalAppData%/Lumen` → 便携默认（或指针位置）的一次性迁移提示，从 v1.3.1 及更早升级不丢旧数据
 
 ---

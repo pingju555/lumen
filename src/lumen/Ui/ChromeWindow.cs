@@ -7,7 +7,8 @@ using System.Windows.Interop;
 namespace Lumen.Ui
 {
     /// <summary>
-    /// 统一窗口基类。三段式：TitleBar(36) + ContentArea(弹性) + Footer(48)。
+    /// 统一窗口基类。三段式：TitleBar(32) + ContentArea(弹性) + Footer(48)。
+    /// 视觉指标对齐原始 PropWindow（轻量风格）：标题栏 32、12×12 蓝方块、12px SemiBold 标题、✕ 22×20/11、底部 BgSurface 方角 + 顶部分隔线。
     /// 视觉模板定义在 Theme.xaml。窗口继承此类自动获得统一外观。
     /// 支持无边框（WindowStyle=None + AllowsTransparency=True）下的拖拽与边缘缩放：
     /// 标题栏拖拽由模板 PART_TitleBar 的 MouseLeftButtonDown→DragMove 处理；
@@ -169,7 +170,7 @@ namespace Lumen.Ui
         {
             if (Template?.FindName("PART_TitleBar", this) is FrameworkElement tb && tb.ActualHeight > 0)
                 return tb.ActualHeight;
-            return 36;
+            return 32;
         }
     }
 }

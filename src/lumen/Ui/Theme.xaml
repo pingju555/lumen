@@ -38,10 +38,10 @@
     <CornerRadius x:Key="RadiusXS">2</CornerRadius>
 
     <!-- ============ Chrome 尺寸令牌 ============ -->
-    <sys:Double x:Key="ChromeTitleBarHeight">36</sys:Double>
+    <sys:Double x:Key="ChromeTitleBarHeight">32</sys:Double>
     <sys:Double x:Key="ChromeFooterHeight">48</sys:Double>
     <Thickness x:Key="ChromeContentPadding">16,12</Thickness>
-    <Thickness x:Key="ChromeTitleBarPadding">12,0</Thickness>
+    <Thickness x:Key="ChromeTitleBarPadding">10,0</Thickness>
 
     <!-- ============ Button ============ -->
     <Style TargetType="Button">
@@ -388,21 +388,21 @@
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <Border Grid.Column="0" Width="14" Height="14"
-                                            CornerRadius="3" Background="{StaticResource BgActive}"
-                                            VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <Border Grid.Column="0" Width="12" Height="12"
+                                            CornerRadius="2" Background="{StaticResource BgActive}"
+                                            VerticalAlignment="Center" Margin="0,0,6,0"/>
                                     <TextBlock Grid.Column="1" Text="{TemplateBinding TitleText}"
-                                               FontSize="13" FontWeight="SemiBold"
+                                               FontSize="12" FontWeight="SemiBold"
                                                Foreground="{StaticResource TextPrimary}"
                                                VerticalAlignment="Center"
                                                TextTrimming="CharacterEllipsis"/>
                                     <ContentPresenter Grid.Column="2"
                                                       Content="{TemplateBinding TitleActionContent}"
-                                                      Margin="0,0,8,0"
+                                                      Margin="0,0,6,0"
                                                       VerticalAlignment="Center"/>
                                     <Button Grid.Column="3" x:Name="PART_CloseButton"
-                                            Content="✕" Width="24" Height="22"
-                                            FontSize="12" Padding="0"
+                                            Content="✕" Width="22" Height="20"
+                                            FontSize="11" Padding="0"
                                             Foreground="{StaticResource TextTertiary}"
                                             Background="Transparent" BorderThickness="0"
                                             Cursor="Hand" ToolTip="关闭"/>
@@ -422,8 +422,10 @@
 
                             <!-- Footer -->
                             <Border Grid.Row="3" x:Name="FooterHost"
-                                    Background="{StaticResource BgSunken}"
-                                    CornerRadius="0,0,8,8" Padding="12,8"
+                                    Background="{StaticResource BgSurface}"
+                                    CornerRadius="0" Padding="8,6"
+                                    BorderBrush="{StaticResource BorderDefault}"
+                                    BorderThickness="0,1,0,0"
                                     SnapsToDevicePixels="True">
                                 <ContentPresenter Content="{TemplateBinding FooterContent}"/>
                             </Border>
