@@ -1,8 +1,10 @@
 # Lumen .gitignore — 只跟踪 src/lumen/ 核心项目
 
 # Build output
-bin/
-obj/
+src/lumen/bin/
+src/lumen/obj/
+**/bin/
+**/obj/
 
 # IDE / OS
 .vs/
@@ -17,12 +19,10 @@ Thumbs.db
 .workbuddy/
 workbuddy.db
 
-# Test / Experiment
-src/cbtest/
-
 # Large binaries
 *.apk
 *.aab
+*.zip
 
 # Temp / Logs
 *.log
