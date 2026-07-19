@@ -18,6 +18,7 @@
 - **内置手册从嵌入资源兜底加载** — 即使 `profiles/使用手册.json` 文件刷新失败（旧版残留、被占用、权限等），只要当前激活档为内置手册，启动时直接从程序集嵌入资源解析最新手册（25 页/583 原子），避免显示旧版 2 页手册；`ConfigStore` 中所有 `Debug.WriteLine` 改为 `Logger.Log`，Release 构建下异常也能落入 `<数据根>/lumen.log` 便于排查
 - **窗框回退至 v1.3.0 状态** — 撤销此前临时引入的窗框统一（共享 `ChromeWindow` 轻量化 + PropWindow 接入），恢复至 v1.3.0 原状：设置/配置档/页面背景窗口继承 `ChromeWindow` 重风格（标题栏 36 / 14×14 蓝色方块 / 13px 标题 / 底部 `BgSunken` 圆角），属性窗口（PropWindow）回归独立自绘轻量风格（32 / 12×12 / 12）。便携配置默认位置与内置手册刷新均保持不变
 - **修复文本原子 align 属性失效** — `TextAtom` 在默认 `FixedHeight` 模式下把 `_bgBorder` 固定设为 `HorizontalAlignment=Left`，导致 `align=Center/Right/Justify` 的文本仍按左对齐渲染。现根据 `align` 值设置 Border 水平/垂直对齐：Center 为水平+垂直居中，Right 为靠右，Justify 为拉伸；Left 保持默认。所有设置过居中的文本（如手册标题、按钮标签）恢复预期位置
+- **移除文本原子背景属性** — 文本原子不需要背景色：旧版默认值 `#22000000` 曾为所有文本带上半透明黑底方块，与覆盖层背景产生色差。现从 `TextAtom` 中彻底移除 `BgProp` 及属性面板「style」页的 `bg` 颜色项；`ApplyDynamic` 不再设置 `_tb.Background`，保留旧数据中的 `bg` 字段但加载时忽略，确保文本始终透明无底色
 
 ---
 

@@ -34,7 +34,6 @@ namespace Lumen.Atoms
         public PropertyValue AlignProp = new StaticValue("Left");
         public PropertyValue LineHeightProp = new StaticValue("0");
         public PropertyValue ShadowProp = new StaticValue("0");
-        public PropertyValue BgProp = new StaticValue("#00000000");
         public PropertyValue PaddingProp = new StaticValue("6");
 
         private TextBlock _tb;
@@ -70,7 +69,6 @@ namespace Lumen.Atoms
             try { _tb.FontWeight = (FontWeight)new FontWeightConverter().ConvertFromString(Txt(WeightProp, Ctx)); } catch { }
             if (System.Enum.TryParse<TextAlignment>(Txt(AlignProp, Ctx), true, out var ta)) _tb.TextAlignment = ta;
             if (double.TryParse(Txt(LineHeightProp, Ctx), out var lh) && lh > 0) _tb.LineHeight = lh; else _tb.LineHeight = double.NaN;
-            _tb.Background = ResolveBrush(BgProp, Ctx, Brushes.Transparent);
             if (double.TryParse(Txt(PaddingProp, Ctx), out var pad) && pad >= 0) _tb.Padding = new Thickness(pad);
             if (Txt(ShadowProp, Ctx).Trim() == "1")
                 _tb.Effect = new DropShadowEffect { Color = Colors.Black, BlurRadius = 6, ShadowDepth = 2, Opacity = 0.6 };
@@ -188,7 +186,7 @@ namespace Lumen.Atoms
                 ["text"] = TextProp, ["color"] = ColorProp, ["size"] = SizeProp,
                 ["font"] = FontProp, ["weight"] = WeightProp, ["align"] = AlignProp,
                 ["lineHeight"] = LineHeightProp, ["shadow"] = ShadowProp,
-                ["bg"] = BgProp, ["padding"] = PaddingProp,
+                ["padding"] = PaddingProp,
                 ["sizing"] = SizingProp, ["constW"] = ConstrainedWProp,
                 ["constH"] = ConstrainedHProp, ["maxLines"] = MaxLinesProp
             };
@@ -206,7 +204,6 @@ namespace Lumen.Atoms
             if (props.TryGetValue("align", out var a)) AlignProp = a;
             if (props.TryGetValue("lineHeight", out var lh)) LineHeightProp = lh;
             if (props.TryGetValue("shadow", out var sh)) ShadowProp = sh;
-            if (props.TryGetValue("bg", out var bg)) BgProp = bg;
             if (props.TryGetValue("padding", out var pd)) PaddingProp = pd;
             if (props.TryGetValue("sizing", out var sz)) SizingProp = sz;
             if (props.TryGetValue("constW", out var cw)) ConstrainedWProp = cw;
@@ -236,7 +233,6 @@ namespace Lumen.Atoms
             l.Add(new EditField { Key = "constH", Label = "Height", Kind = EditKind.Number, Min = 20, Max = 2000 });
             l.Add(new EditField { Key = "maxLines", Label = "Max Lines", Kind = EditKind.Number, Min = 0, Max = 100 });
             l.Add(new EditField { Key = "shadow", Label = Loc.T("atom.label.shadow"), Kind = EditKind.Bool, Tab = "style" });
-            l.Add(new EditField { Key = "bg", Label = Loc.T("atom.label.bgColor"), Kind = EditKind.Color, Tab = "style" });
             l.Add(new EditField { Key = "padding", Label = Loc.T("atom.label.padding"), Kind = EditKind.Slider, Min = 0, Max = 40, Tab = "style" });
             return l;
         }
