@@ -34,7 +34,7 @@ namespace Lumen.Atoms
         public PropertyValue AlignProp = new StaticValue("Left");
         public PropertyValue LineHeightProp = new StaticValue("0");
         public PropertyValue ShadowProp = new StaticValue("0");
-        public PropertyValue BgProp = new StaticValue("#22000000");
+        public PropertyValue BgProp = new StaticValue("#00000000");
         public PropertyValue PaddingProp = new StaticValue("6");
 
         private TextBlock _tb;

@@ -338,6 +338,7 @@ namespace Lumen.Ui
         private static bool FieldIsStaticOnly(EditField f) => f.Kind switch
         {
             EditKind.Choice => true,
+            EditKind.Anchor => true,
             EditKind.Bool => true,
             _ => false
         };
@@ -669,6 +670,8 @@ namespace Lumen.Ui
                         st.ReadValue = () => sl.Value.ToString("0.##");
                         return sp;
                     }
+                case EditKind.Anchor:
+                    return BuildAnchorEditor(f, raw, st);
                 default:
                     {
                         var tb = new TextBox { Text = raw, MinWidth = 220, ToolTip = f.Hint };
@@ -677,6 +680,98 @@ namespace Lumen.Ui
                         return tb;
                     }
             }
+        }
+
+        // ---------- 九宫格锚点选择器（魔方图）----------
+        /// <summary>3×3 网格：9 个正方形 + 间隙，选中格用红点标记；点击任意格即切换锚点。
+        /// 顺序与 NineAnchor 枚举行主序一致。</summary>
+        private UIElement BuildAnchorEditor(EditField f, string raw, FieldState st)
+        {
+            var anchors = new[]
+            {
+                "TopLeft","TopCenter","TopRight",
+                "MiddleLeft","Center","MiddleRight",
+                "BottomLeft","BottomCenter","BottomRight"
+            };
+            string selected = anchors.Contains(raw) ? raw : anchors[0];
+
+            var cells = new Border[9];
+            var dots = new Ellipse[9];
+            var caption = new TextBlock
+            {
+                FontSize = 11,
+                Foreground = Theme.TextTertiary,
+                Margin = new Thickness(0, 5, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Left
+            };
+
+            var grid = new Grid
+            {
+                Width = 66, Height = 66,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            for (int r = 0; r < 3; r++)
+                grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            for (int c = 0; c < 3; c++)
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            void Paint()
+            {
+                for (int i = 0; i < 9; i++)
+                {
+                    bool on = anchors[i] == selected;
+                    cells[i].BorderBrush = on ? Theme.Accent : Theme.BorderSoft;
+                    cells[i].BorderThickness = on ? new Thickness(2) : new Thickness(1);
+                    cells[i].Background = on ? Theme.BgActive : Theme.BgSurface;
+                    dots[i].Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+                }
+                caption.Text = Loc.T("atom.label.anchor") + ": " + selected;
+            }
+
+            for (int i = 0; i < 9; i++)
+            {
+                int idx = i;
+                var dot = new Ellipse
+                {
+                    Width = 8, Height = 8,
+                    Fill = Theme.ErrRed,
+                    IsHitTestVisible = false,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                var cell = new Border
+                {
+                    Margin = new Thickness(1.5),
+                    CornerRadius = new CornerRadius(2),
+                    Background = Theme.BgSurface,
+                    BorderBrush = Theme.BorderSoft,
+                    BorderThickness = new Thickness(1),
+                    Cursor = Cursors.Hand
+                };
+                cell.Child = dot;
+                cell.MouseEnter += (s, e) => { if (anchors[idx] != selected) cell.Background = Theme.BgHover; };
+                cell.MouseLeave += (s, e) => { cell.Background = anchors[idx] == selected ? Theme.BgActive : Theme.BgSurface; };
+                cell.MouseLeftButtonDown += (s, e) =>
+                {
+                    selected = anchors[idx];
+                    Paint();
+                    Preview(f);
+                };
+                Grid.SetRow(cell, i / 3);
+                Grid.SetColumn(cell, i % 3);
+                grid.Children.Add(cell);
+                cells[i] = cell;
+                dots[i] = dot;
+            }
+            Paint();
+
+            st.ReadValue = () => selected;
+
+            var wrap = new StackPanel { Orientation = Orientation.Vertical };
+            wrap.Children.Add(grid);
+            wrap.Children.Add(caption);
+            return wrap;
         }
 
         // ---------- 色卡编辑器（ARGB 内嵌展开） ----------
@@ -1165,7 +1260,7 @@ namespace Lumen.Ui
             }
             try { _atom.SetProps(dict); }
             catch { return; }
-            if (changedField.Kind == EditKind.Choice) _onStructuralChange?.Invoke();
+            if (changedField.Kind == EditKind.Choice || changedField.Kind == EditKind.Anchor) _onStructuralChange?.Invoke();
             else _onPreview?.Invoke();
             // 若本次变更的是某字段的显隐依赖键(kind 等)，刷新条件可见性
             if (_fields.Any(f => f.ShowIfKey == changedField.Key))

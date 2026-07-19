@@ -186,18 +186,6 @@ namespace Lumen.Atoms
         /// <summary>容器无需宽/高输入框（尺寸自适应）。</summary>
         protected override bool ShowSizeFields => false;
 
-        public override void RecalcPosition(double areaW, double areaH)
-        {
-            var anchorStr = Txt(AnchorProp, Ctx).Trim();
-            Enum.TryParse<NineAnchor>(anchorStr, out var anchor);
-            double.TryParse(Txt(OffsetXProp, Ctx), out var ox);
-            double.TryParse(Txt(OffsetYProp, Ctx), out var oy);
-            // 锚点 + 偏移 → 容器「中心」坐标
-            var center = Coord.ResolveAnchor(anchor, ox, oy, areaW, areaH);
-            Bounds = new Rect(center.X, center.Y, Bounds.Width, Bounds.Height);
-            SyncPosition();   // 由 Atom.SyncPosition 按 CenterAnchored 反推左上角
-        }
-
         public override Dictionary<string, PropertyValue> GetProps()
         {
             var d = new Dictionary<string, PropertyValue>

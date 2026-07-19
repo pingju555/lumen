@@ -249,7 +249,7 @@ namespace Lumen.Atoms
         {
             var l = new List<EditField>
             {
-                new EditField { Key = "anchor",  Label = Loc.T("atom.label.anchor"),  Kind = EditKind.Choice, Tab = "layout", Choices = new[] { "TopLeft", "TopCenter", "TopRight", "MiddleLeft", "Center", "MiddleRight", "BottomLeft", "BottomCenter", "BottomRight" } },
+                new EditField { Key = "anchor",  Label = Loc.T("atom.label.anchor"),  Kind = EditKind.Anchor, Tab = "layout" },
                 new EditField { Key = "offsetX", Label = Loc.T("atom.label.offsetX"), Kind = EditKind.Number, Tab = "layout", Min = -9999, Max = 9999 },
                 new EditField { Key = "offsetY", Label = Loc.T("atom.label.offsetY"), Kind = EditKind.Number, Tab = "layout", Min = -9999, Max = 9999 },
                 new EditField { Key = "opacity",  Label = Loc.T("atom.label.opacity"),  Kind = EditKind.Slider, Tab = "layout", Min = 0, Max = 1 },
@@ -1079,11 +1079,41 @@ namespace Lumen.Atoms
             double.TryParse(Txt(OffsetXProp, Ctx), out var ox);
             double.TryParse(Txt(OffsetYProp, Ctx), out var oy);
 
-            var pos = Coord.ResolveAnchor(anchor, ox, oy, areaW, areaH);
-            // 尺寸不变，仅更新位置
-            Bounds = new Rect(pos.X, pos.Y, Bounds.Width, Bounds.Height);
+            // 画布基准点：锚点对应的区域角/边位置
+            var basePt = Coord.ResolveAnchor(anchor, 0, 0, areaW, areaH);
+
+            // 实际渲染尺寸（AutoSize 原子 Bounds 不可靠，借已测量值）
+            double w = Bounds.Width, h = Bounds.Height;
+            if (_root is FrameworkElement fe && fe.ActualWidth > 0) w = fe.ActualWidth;
+            if (_root is FrameworkElement fe2 && fe2.ActualHeight > 0) h = fe2.ActualHeight;
+
+            // 锚点决定「原子哪一角」对齐基准点：fx/fy 为该角相对原子左上角的比例
+            double fx = AnchorFracX(anchor), fy = AnchorFracY(anchor);
+            double left = basePt.X - fx * w + ox;
+            double top = basePt.Y - fy * h + oy;
+
+            if (CenterAnchored)
+                Bounds = new Rect(left + w / 2, top + h / 2, Bounds.Width, Bounds.Height);
+            else
+                Bounds = new Rect(left, top, Bounds.Width, Bounds.Height);
             SyncPosition();
         }
+
+        private static double AnchorFracX(NineAnchor a) => a switch
+        {
+            NineAnchor.TopLeft or NineAnchor.MiddleLeft or NineAnchor.BottomLeft => 0,
+            NineAnchor.TopCenter or NineAnchor.Center or NineAnchor.BottomCenter => 0.5,
+            NineAnchor.TopRight or NineAnchor.MiddleRight or NineAnchor.BottomRight => 1,
+            _ => 0
+        };
+
+        private static double AnchorFracY(NineAnchor a) => a switch
+        {
+            NineAnchor.TopLeft or NineAnchor.TopCenter or NineAnchor.TopRight => 0,
+            NineAnchor.MiddleLeft or NineAnchor.Center or NineAnchor.MiddleRight => 0.5,
+            NineAnchor.BottomLeft or NineAnchor.BottomCenter or NineAnchor.BottomRight => 1,
+            _ => 0
+        };
 
         /// <summary>
         /// RecalcPosition 的逆运算：拖拽 / 缩放松手后，把当前像素 Bounds 反解为九宫格偏移，
@@ -1097,8 +1127,18 @@ namespace Lumen.Atoms
             var anchorStr = Txt(AnchorProp, Ctx).Trim();
             Enum.TryParse<NineAnchor>(anchorStr, out var anchor);
             var basePt = Coord.ResolveAnchor(anchor, 0, 0, Coord.AreaW, Coord.AreaH);
-            int ox = (int)Math.Round(Bounds.X - basePt.X);
-            int oy = (int)Math.Round(Bounds.Y - basePt.Y);
+
+            double w = Bounds.Width, h = Bounds.Height;
+            if (_root is FrameworkElement fe && fe.ActualWidth > 0) w = fe.ActualWidth;
+            if (_root is FrameworkElement fe2 && fe2.ActualHeight > 0) h = fe2.ActualHeight;
+
+            // 原子左上角在画布中的坐标
+            double left = CenterAnchored ? Bounds.X - w / 2 : Bounds.X;
+            double top = CenterAnchored ? Bounds.Y - h / 2 : Bounds.Y;
+
+            double fx = AnchorFracX(anchor), fy = AnchorFracY(anchor);
+            int ox = (int)Math.Round(left - basePt.X + fx * w);
+            int oy = (int)Math.Round(top - basePt.Y + fy * h);
             OffsetXProp = new StaticValue(ox.ToString());
             OffsetYProp = new StaticValue(oy.ToString());
         }

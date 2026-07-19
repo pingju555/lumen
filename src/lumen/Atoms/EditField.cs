@@ -3,7 +3,7 @@ using System.Collections.Generic;
 namespace Lumen.Atoms
 {
     /// <summary>可编辑字段的输入类型（属性编辑器据此选择控件）。</summary>
-    public enum EditKind { Text, Color, Number, Choice, File, Bool, Slider }
+    public enum EditKind { Text, Color, Number, Choice, File, Bool, Slider, Anchor }
 
     /// <summary>属性编辑器标签页描述：Key 用于字段归属，LocKey 为本地化键（prop.tab.&lt;Key&gt;）。</summary>
     public class TabSpec
