@@ -221,7 +221,7 @@ namespace Lumen.Formula
             double z = a.Length > 3 ? a[3].AsNum() : 0;
             switch (op)
             {
-                case "round": return Value.Of(Math.Round(x));
+                case "round": return Value.Of(a.Length > 2 ? Math.Round(x, (int)Math.Round(y)) : Math.Round(x));
                 case "floor": return Value.Of(Math.Floor(x));
                 case "ceil": return Value.Of(Math.Ceiling(x));
                 case "abs": return Value.Of(Math.Abs(x));

@@ -66,9 +66,9 @@ namespace Lumen.Formula
 
         public override Value Eval(EvalContext ctx)
         {
-            // 短路逻辑
-            if (_op == "&") return Value.Of(_l.Eval(ctx).AsBool() && _r.Eval(ctx).AsBool());
-            if (_op == "|") return Value.Of(_l.Eval(ctx).AsBool() || _r.Eval(ctx).AsBool());
+            // 短路逻辑（& / && / | / || 等价）
+            if (_op == "&" || _op == "&&") return Value.Of(_l.Eval(ctx).AsBool() && _r.Eval(ctx).AsBool());
+            if (_op == "|" || _op == "||") return Value.Of(_l.Eval(ctx).AsBool() || _r.Eval(ctx).AsBool());
 
             var lv = _l.Eval(ctx);
             var rv = _r.Eval(ctx);
@@ -80,6 +80,7 @@ namespace Lumen.Formula
             switch (op)
             {
                 case "=":
+                case "==":
                     if (lv.Type == ValueType.Num && rv.Type == ValueType.Num)
                         return Value.Of(lv.Num == rv.Num);
                     return Value.Of(lv.AsStr() == rv.AsStr());
@@ -107,6 +108,9 @@ namespace Lumen.Formula
                         catch { return Value.Of(false); }
                     }
                 case "+":
+                    // 类型感知：两侧皆数字 → 数值相加；否则拼接（KLWP 行为）
+                    if (lv.Type == ValueType.Num && rv.Type == ValueType.Num)
+                        return Value.Of(lv.Num + rv.Num);
                     return Value.Of(lv.AsStr() + rv.AsStr());
                 case "-":
                     return Value.Of(lv.AsNum() - rv.AsNum());
@@ -116,6 +120,11 @@ namespace Lumen.Formula
                     {
                         double d = rv.AsNum();
                         return Value.Of(d == 0 ? 0 : lv.AsNum() / d);
+                    }
+                case "%":
+                    {
+                        double d = rv.AsNum();
+                        return Value.Of(d == 0 ? 0 : lv.AsNum() % d);
                     }
                 default:
                     return Value.Null();

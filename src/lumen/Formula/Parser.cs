@@ -50,7 +50,8 @@ namespace Lumen.Formula
         private static AstNode ParseLogic()
         {
             var left = ParseCompare();
-            while (Peek().Type == TokType.Op && (Peek().Text == "&" || Peek().Text == "|"))
+            while (Peek().Type == TokType.Op &&
+                   (Peek().Text == "&" || Peek().Text == "|" || Peek().Text == "&&" || Peek().Text == "||"))
             {
                 var op = Next().Text;
                 var right = ParseCompare();
@@ -62,7 +63,7 @@ namespace Lumen.Formula
         // 比较层（expr → logic → compare → add → mul → unary → primary）。
         // 支持 = != > >= < <= ~=(正则)，对应 BinaryNode.ApplyBinary 已实现的分支。
         // 等号用单字符 '='（与 KLWP 一致）；'==' 不是合法 token（会被拆成两个 '='，应避免）。
-        private static readonly HashSet<string> CompareOps = new() { ">", "<", ">=", "<=", "=", "!=", "~=" };
+        private static readonly HashSet<string> CompareOps = new() { ">", "<", ">=", "<=", "=", "==", "!=", "~=" };
 
         private static AstNode ParseCompare()
         {
@@ -91,7 +92,7 @@ namespace Lumen.Formula
         private static AstNode ParseMul()
         {
             var left = ParseUnary();
-            while (Peek().Type == TokType.Op && (Peek().Text == "*" || Peek().Text == "/"))
+            while (Peek().Type == TokType.Op && (Peek().Text == "*" || Peek().Text == "/" || Peek().Text == "%"))
             {
                 var op = Next().Text;
                 var right = ParseUnary();
@@ -106,6 +107,11 @@ namespace Lumen.Formula
             {
                 Next();
                 return new UnaryNode("-", ParseUnary());
+            }
+            if (Peek().Type == TokType.Op && Peek().Text == "+")
+            {
+                Next();
+                return ParseUnary();   // 一元 + 透传
             }
             return ParsePrimary();
         }

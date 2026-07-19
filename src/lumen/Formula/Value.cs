@@ -44,8 +44,21 @@ namespace Lumen.Formula
 
         private static string FormatNum(double n)
         {
+            if (double.IsNaN(n)) return "NaN";
+            if (double.IsInfinity(n)) return n > 0 ? "Infinity" : "-Infinity";
             if (n == Math.Floor(n) && Math.Abs(n) < 1e15)
                 return ((long)n).ToString(CultureInfo.InvariantCulture);
+
+            // 去浮点噪声：0.1+0.2 等二进制不可表示的尾数误差。
+            // 从 1 位小数起，找第一个与真值偏差落在容差内的表示（最短即最干净）。
+            double scale = Math.Max(1.0, Math.Abs(n));
+            const double tol = 1e-12;
+            for (int k = 1; k <= 15; k++)
+            {
+                double r = Math.Round(n, k);
+                if (Math.Abs(r - n) <= tol * scale)
+                    return r.ToString("F" + k, CultureInfo.InvariantCulture);
+            }
             return n.ToString(CultureInfo.InvariantCulture);
         }
 

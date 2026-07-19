@@ -69,12 +69,14 @@ namespace Lumen.Formula
                 if (c == ')') { toks.Add(new Token(TokType.RParen, ")", i)); i++; continue; }
                 if (c == ',') { toks.Add(new Token(TokType.Comma, ",", i)); i++; continue; }
 
-                // 运算符：优先双字符 >= <= != ~=
+                // 运算符：优先双字符 >= <= != ~= && || ==（单字符 & | % + - * / 等落单字符分支）
                 string op = null;
                 if (i + 1 < n)
                 {
                     string two = src.Substring(i, 2);
                     if (two == ">=" || two == "<=" || two == "!=" || two == "~=") op = two;
+                    else if (two == "&&" || two == "||") op = two;
+                    else if (two == "==") op = "==";   // 保留双字符 token，长度 2 保证前进 2 位
                 }
                 if (op == null) op = c.ToString();
                 toks.Add(new Token(TokType.Op, op, i));
