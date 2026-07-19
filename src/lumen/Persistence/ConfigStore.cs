@@ -5,6 +5,7 @@ using System.Linq;
 using System.Globalization;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Windows;
 using Lumen.Atoms;
 using Lumen.Globals;
@@ -37,6 +38,7 @@ namespace Lumen.Persistence
         public double W { get; set; }
         public double H { get; set; }
         public double Z { get; set; }
+        [JsonConverter(typeof(TolerantStringDictionaryConverter))]
         public Dictionary<string, string> Props { get; set; } = new();
         public List<AtomDto> Children { get; set; }
     }
@@ -46,6 +48,44 @@ namespace Lumen.Persistence
         public string Type { get; set; }
         public string Value { get; set; }
         public int Selected { get; set; }
+    }
+
+    /// <summary>兼容 JSON 中数值/布尔/ null 被错误写成非字符串的 Props 值：一律按字符串读入。</summary>
+    internal class TolerantStringDictionaryConverter : JsonConverter<Dictionary<string, string>>
+    {
+        public override Dictionary<string, string> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            var dict = new Dictionary<string, string>();
+            if (reader.TokenType != JsonTokenType.StartObject)
+                return dict;
+            while (reader.Read())
+            {
+                if (reader.TokenType == JsonTokenType.EndObject)
+                    break;
+                if (reader.TokenType != JsonTokenType.PropertyName)
+                    continue;
+                string key = reader.GetString() ?? "";
+                if (!reader.Read()) break;
+                string value = reader.TokenType switch
+                {
+                    JsonTokenType.Number => reader.GetDouble().ToString(CultureInfo.InvariantCulture),
+                    JsonTokenType.True => "true",
+                    JsonTokenType.False => "false",
+                    JsonTokenType.Null => "",
+                    _ => reader.GetString() ?? ""
+                };
+                dict[key] = value;
+            }
+            return dict;
+        }
+
+        public override void Write(Utf8JsonWriter writer, Dictionary<string, string> value, JsonSerializerOptions options)
+        {
+            writer.WriteStartObject();
+            foreach (var kvp in value)
+                writer.WriteString(kvp.Key, kvp.Value);
+            writer.WriteEndObject();
+        }
     }
     public class PageDto
     {

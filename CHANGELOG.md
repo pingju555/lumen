@@ -13,6 +13,7 @@
 
 ### 修复
 - **内置「使用手册」启动即刷新** — `ConfigStore.LoadActive()` 原先仅在首次运行/无配置档时调用 `InstallBuiltinManual()`；已安装用户走另一分支直接 `Load(active)`，**从不重新安装**，导致旧 `profiles/使用手册.json` 永不被 v2.1 覆盖（表现为「新手册没加载」）。现每次启动先 `RefreshBuiltinManual()`（仅覆盖文件、不切激活档），激活档若为手册则自然读到最新版；语言切换路径 `RefreshManualIfActive()` 仍按 `Loc.Cur` 覆盖写入对应语言版
+- **修复内置手册 JSON 中 `Props.z` 类型错误** — `gen_manual.py` 生成原子时把 `z` 写成数值 `0.0`，但 `AtomDto.Props` 是 `Dictionary<string, string>`，导致 `JsonSerializer.Deserialize` 在首个原子处抛出 `The JSON value could not be converted to System.String` 并整份手册加载失败。现改为输出字符串 `"0"`，并对 `Props` 增加 `TolerantStringDictionaryConverter`：读取时若遇到数值/布尔/null 自动转字符串，避免未来手编/生成配置因类型不一致直接崩溃
 - **内置手册从嵌入资源兜底加载** — 即使 `profiles/使用手册.json` 文件刷新失败（旧版残留、被占用、权限等），只要当前激活档为内置手册，启动时直接从程序集嵌入资源解析最新手册（25 页/583 原子），避免显示旧版 2 页手册；`ConfigStore` 中所有 `Debug.WriteLine` 改为 `Logger.Log`，Release 构建下异常也能落入 `<数据根>/lumen.log` 便于排查
 - **窗框回退至 v1.3.0 状态** — 撤销此前临时引入的窗框统一（共享 `ChromeWindow` 轻量化 + PropWindow 接入），恢复至 v1.3.0 原状：设置/配置档/页面背景窗口继承 `ChromeWindow` 重风格（标题栏 36 / 14×14 蓝色方块 / 13px 标题 / 底部 `BgSunken` 圆角），属性窗口（PropWindow）回归独立自绘轻量风格（32 / 12×12 / 12）。便携配置默认位置与内置手册刷新均保持不变
 - **配置默认位置改为便携（随 exe）** — `Core/LumenPaths.DefaultDataDir` 由 `%LocalAppData%/Lumen` 改为**程序（exe）所在文件夹**。即 zip 解压到哪，配置（profiles/config/settings/lang）与日志就落在哪（exe 旁），实现真正的便携运行，无需安装、不写系统目录。`lumen.location` 指针文件仍位于 exe 旁，用于重定向到任意其它文件夹（设置 → 数据存储位置一键迁移）。`Core/Logger` 回退由 `%TEMP%/lumen.log` 改为 `<exe 文件夹>/lumen.log`，与便携默认根一致。`App.MaybeAutoMigrate` 增加旧 `%LocalAppData%/Lumen` → 便携默认（或指针位置）的一次性迁移提示，从 v1.3.1 及更早升级不丢旧数据
