@@ -1,5 +1,8 @@
 # Lumen .gitignore — 只跟踪 src/lumen/ 核心项目
 
+# Reference materials (KLWP analysis, etc.)
+reference/
+
 # Build output
 src/lumen/bin/
 src/lumen/obj/
