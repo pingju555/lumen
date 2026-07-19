@@ -7,14 +7,14 @@ namespace Lumen.Pages
 {
     /// <summary>
     /// 多页面管理器（P3-03）：ObservableCollection 驱动 UI，SwitchTo 触发换页（过渡动画由宿主执行）。
-    /// 支持切换（循环/夹紧）、增删改名排序，默认上限 9 页。
+    /// 支持切换（循环/夹紧）、增删改名排序，默认上限 99 页。
     /// 详见 docs/project/phases/P3_网格小组件页面/P3-03_页面.md
     /// </summary>
     public class PageManager
     {
         public ObservableCollection<Page> Pages { get; } = new();
         public int Current { get; private set; }
-        public int MaxPages { get; set; } = 9;
+        public int MaxPages { get; set; } = 99;
 
         /// <summary>换页通知（宿主据此做淡入淡出 + 重组成内容 + 全标脏）。</summary>
         public event Action<int> CurrentChanged;

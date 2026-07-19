@@ -58,10 +58,11 @@ dotnet build -c Release
 .\bin\Release\net8.0-windows10.0.22621.0\lumen.exe
 ```
 
-- Exit: `Ctrl+Alt+Q`
-- Show / hide overlay: `Ctrl+Alt+H`
-- Switch page: `Ctrl+Alt+← / →`
-- Edit mode: `right-click menu` → Enter edit … (grid `G`, preset `P`, new page `N` only work in edit mode)
+- Shortcuts (modifier is always `Ctrl+Alt`):
+  - Exit: `Q`
+  - Toggle edit / desktop mode: `E`
+  - Previous / next page: no default shortcut; set it yourself in `LumenWindow.RegisterHotKeys` source
+- Other functions (grid gear / preset / new page / show-hide overlay) have no default shortcut; use the right-click or tray menu
 - Profile management: `right-click menu` → Profiles…
 - UI language: `right-click menu` → Settings → Language
 

@@ -39,11 +39,9 @@ namespace Lumen
         private IntPtr _hwnd;
         private HwndSource _hwndSource;
 
-        // 热键 id
-        private const int HK_EXIT = 1, HK_NEXT = 2, HK_PREV = 3, HK_GEAR = 4,
-                          HK_PRESET = 6, HK_NEWPAGE = 7, HK_TOGGLE_VIS = 8;
-        private const int VK_Q = 0x51, VK_RIGHT = 0x27, VK_LEFT = 0x25,
-                          VK_G = 0x47, VK_P = 0x50, VK_N = 0x4E, VK_H = 0x48;
+        // 热键 id：仅「退出」「切换编辑/桌面模式」默认生效；换页热键留空占位，由用户在 RegisterHotKeys 中自行启用
+        private const int HK_EXIT = 1, HK_TOGGLE_MODE = 2, HK_NEXT = 3, HK_PREV = 4;
+        private const int VK_Q = 0x51, VK_E = 0x45, VK_RIGHT = 0x27, VK_LEFT = 0x25;
 
         private readonly LayerStack _stack = new();
         private WallpaperLayer _wallpaperLayer;
@@ -110,13 +108,12 @@ namespace Lumen
         {
             (int mods, int vk, int id, string name)[] keys =
             {
-                (NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT, VK_Q,      HK_EXIT,    "Ctrl+Alt+Q(退出)"),
-                (NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT, VK_RIGHT,  HK_NEXT,    "Ctrl+Alt+→(下一页)"),
-                (NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT, VK_LEFT,   HK_PREV,    "Ctrl+Alt+←(上一页)"),
-                (NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT, VK_G,      HK_GEAR,    "Ctrl+Alt+G(换网格档)"),
-                (NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT, VK_P,      HK_PRESET,  "Ctrl+Alt+P(套预设)"),
-                (NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT, VK_N,      HK_NEWPAGE, "Ctrl+Alt+N(新页)"),
-                (NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT, VK_H,      HK_TOGGLE_VIS, "Ctrl+Alt+H(显隐覆盖层)"),
+                (NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT, VK_Q,      HK_EXIT,        "Ctrl+Alt+Q(退出)"),
+                (NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT, VK_E,      HK_TOGGLE_MODE, "Ctrl+Alt+E(切换编辑/桌面模式)"),
+                // —— 换页热键留空占位（默认不注册）——
+                // 由用户自行设置：取消下一行注释并选择 VK 即可启用上一页 / 下一页
+                // (NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT, VK_RIGHT, HK_NEXT, "Ctrl+Alt+→(下一页)"),
+                // (NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT, VK_LEFT,  HK_PREV, "Ctrl+Alt+←(上一页)"),
             };
             foreach (var k in keys)
             {
@@ -999,14 +996,10 @@ namespace Lumen
                 switch (wParam.ToInt32())
                 {
                     case HK_EXIT: Application.Current.Shutdown(); break;
+                    case HK_TOGGLE_MODE: SetEditMode(!_editMode); break;
+                    // 换页热键为占位（默认未注册）：切换逻辑保留，待用户在 RegisterHotKeys 中启用对应键后生效
                     case HK_NEXT: _pages.Next(); break;
                     case HK_PREV: _pages.Prev(); break;
-                    case HK_GEAR: if (_editMode) CycleGridGear(); break;
-                    case HK_PRESET: if (_editMode) CyclePreset(); break;
-                    case HK_NEWPAGE:
-                        if (_editMode && _pages.Add(Loc.T("main.pageName", _pages.Pages.Count + 1))) ComposeCurrentPage();
-                        break;
-                    case HK_TOGGLE_VIS: ToggleVisibility(); break;
                     default: return IntPtr.Zero;
                 }
                 handled = true;
@@ -1309,7 +1302,7 @@ namespace Lumen
             SaveAll();
             if (_hwnd != IntPtr.Zero)
             {
-                foreach (var id in new[] { HK_EXIT, HK_NEXT, HK_PREV, HK_GEAR, HK_PRESET, HK_NEWPAGE, HK_TOGGLE_VIS })
+                foreach (var id in new[] { HK_EXIT, HK_TOGGLE_MODE })
                     NativeMethods.UnregisterHotKey(_hwnd, id);
                 DestroyTrayIcon();
             }
