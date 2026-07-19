@@ -1083,6 +1083,15 @@ namespace Lumen.Atoms
             double.TryParse(Txt(OffsetXProp, Ctx), out var ox);
             double.TryParse(Txt(OffsetYProp, Ctx), out var oy);
 
+            // 绝对定位模式：TopLeft 锚点 + 偏移均为 0 → 位置已存于 Bounds
+            // （拖拽/落点/落点直接写入），不应按锚点重算而清零。
+            // 仅当锚点非 TopLeft 或存在非零偏移时才按锚点重定位（窗口尺寸变化等）。
+            if (anchor == NineAnchor.TopLeft && ox == 0 && oy == 0)
+            {
+                SyncPosition();
+                return;
+            }
+
             // 画布基准点：锚点对应的区域角/边位置
             var basePt = Coord.ResolveAnchor(anchor, 0, 0, areaW, areaH);
 
