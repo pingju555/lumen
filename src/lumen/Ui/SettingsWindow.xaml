@@ -18,6 +18,26 @@
 
             <Separator Margin="0,12,0,8"/>
 
+            <!-- 数据存储位置 -->
+            <TextBlock Text="{loc:Loc settings.datadir}" FontSize="11" Foreground="{StaticResource TextTertiary}" Margin="0,0,0,4"/>
+            <TextBox x:Name="TxtDataDir" IsReadOnly="True" Width="420" HorizontalAlignment="Left"
+                     Background="{StaticResource BgSunken}" Foreground="{StaticResource TextSecondary}"
+                     BorderBrush="{StaticResource BorderDefault}" Margin="0,2" ToolTip="{Binding Text, ElementName=TxtDataDir}"/>
+            <TextBox x:Name="TxtNewDataDir" IsReadOnly="True" Width="420" HorizontalAlignment="Left" Visibility="Collapsed"
+                     Background="{StaticResource BgSunken}" Foreground="{StaticResource TextSecondary}"
+                     BorderBrush="{StaticResource BorderSoft}" Margin="0,4,0,0" ToolTip="{Binding Text, ElementName=TxtNewDataDir}"/>
+            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                <Button x:Name="BtnBrowseDataDir" Content="{loc:Loc settings.datadir.browse}" Width="96"
+                        Background="{StaticResource BgHover}" Foreground="{StaticResource TextPrimary}" BorderThickness="0"/>
+                <Button x:Name="BtnMigrateData" Content="{loc:Loc settings.datadir.migrate}" Width="96"
+                        Margin="8,0,0,0"
+                        Background="{StaticResource BgHover}" Foreground="{StaticResource TextPrimary}" BorderThickness="0"/>
+            </StackPanel>
+            <TextBlock x:Name="TxtDataDirTip" Text="{loc:Loc settings.datadir.tip}" FontSize="10"
+                       Foreground="{StaticResource TextDisabled}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+
+            <Separator Margin="0,12,0,8"/>
+
             <!-- 开机自启 -->
             <CheckBox x:Name="ChkAutostart" Content="{loc:Loc settings.autostart}" Margin="0,2"/>
             <TextBlock x:Name="TxtAutostartHint" Text="{loc:Loc settings.autostart.hint}" FontSize="10"

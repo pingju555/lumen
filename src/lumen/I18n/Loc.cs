@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text.Json;
+using Lumen.Core;
 using Lumen.Persistence;
 
 namespace Lumen.I18n
@@ -20,8 +21,8 @@ namespace Lumen.I18n
         public const string LangZh = "zh-CN";
         public const string LangEn = "en-GB";
 
-        private static readonly string AppDataLangDir =
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Lumen", "lang");
+        // 数据根可配置：语言覆盖目录跟随 LumenPaths（默认 %LocalAppData%/Lumen/lang）。
+        private static readonly string AppDataLangDir = LumenPaths.LangDir;
         private static readonly string BuiltinLangDir =
             Path.Combine(AppContext.BaseDirectory, "lang");
 

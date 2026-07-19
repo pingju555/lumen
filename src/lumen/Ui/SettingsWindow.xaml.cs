@@ -19,6 +19,7 @@ namespace Lumen.Ui
         private readonly LumenWindow _owner;
         private bool _loading;
         private readonly ObservableCollection<string> _coverDirs = new ObservableCollection<string>();
+        private string _pendingDataDir;
 
         public SettingsWindow(LumenWindow owner)
         {
@@ -39,6 +40,8 @@ namespace Lumen.Ui
             ChkAutostart.Checked += (s, e) => { if (!_loading) Autostart.SetEnabled(true); };
             ChkAutostart.Unchecked += (s, e) => { if (!_loading) Autostart.SetEnabled(false); };
             BtnToggle.Click += (s, e) => { _owner.ToggleVisibility(); UpdateToggleLabel(); };
+            BtnBrowseDataDir.Click += (s, e) => BrowseDataDir();
+            BtnMigrateData.Click += (s, e) => MigrateData();
             BtnAddCoverDir.Click += (s, e) => AddCoverDir();
             BtnRemoveCoverDir.Click += (s, e) => RemoveCoverDir();
             BtnClose.Click += (s, e) => Close();
@@ -73,6 +76,9 @@ namespace Lumen.Ui
             BtnRemoveCoverDir.Content = Loc.T("settings.cover.remove");
             TxtCoverTip.Text = Loc.T("settings.cover.tip");
             BtnClose.Content = Loc.T("settings.close");
+            BtnBrowseDataDir.Content = Loc.T("settings.datadir.browse");
+            BtnMigrateData.Content = Loc.T("settings.datadir.migrate");
+            TxtDataDirTip.Text = Loc.T("settings.datadir.tip");
             CmbLang.SelectedValue = Loc.Cur;
         }
 
@@ -83,6 +89,54 @@ namespace Lumen.Ui
             LoadCoverDirs();
             _loading = false;
             UpdateToggleLabel();
+            // 数据存储位置（当前生效根）
+            TxtDataDir.Text = LumenPaths.DataDir;
+            _pendingDataDir = null;
+            TxtNewDataDir.Visibility = Visibility.Collapsed;
+            TxtNewDataDir.Text = "";
+        }
+
+        // ---- 数据存储位置：可配置 + 迁移 ----
+        private void BrowseDataDir()
+        {
+            var handle = new WindowInteropHelper(this).Handle;
+            var path = FolderPicker.Pick(Loc.T("settings.datadir.browse"), handle);
+            if (string.IsNullOrWhiteSpace(path)) return;
+            _pendingDataDir = path.Trim();
+            TxtNewDataDir.Text = _pendingDataDir;
+            TxtNewDataDir.Visibility = Visibility.Visible;
+        }
+
+        private void MigrateData()
+        {
+            if (string.IsNullOrWhiteSpace(_pendingDataDir))
+            {
+                MessageBox.Show(Loc.T("msg.datadir.none"), Loc.T("settings.datadir"), MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            var current = LumenPaths.DataDir;
+            if (string.Equals(current, _pendingDataDir, StringComparison.OrdinalIgnoreCase))
+            {
+                MessageBox.Show(Loc.T("msg.datadir.same"), Loc.T("settings.datadir"), MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            if (LumenPaths.HasData(_pendingDataDir))
+            {
+                var r = MessageBox.Show(Loc.T("msg.datadir.overwrite"), Loc.T("settings.datadir"), MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (r != MessageBoxResult.Yes) return;
+            }
+            if (!LumenPaths.CopyAll(current, _pendingDataDir))
+            {
+                MessageBox.Show(Loc.T("msg.datadir.fail"), Loc.T("settings.datadir"), MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+            var done = _pendingDataDir;
+            LumenPaths.SetDataDir(done);
+            TxtDataDir.Text = done;
+            _pendingDataDir = null;
+            TxtNewDataDir.Visibility = Visibility.Collapsed;
+            TxtNewDataDir.Text = "";
+            MessageBox.Show(Loc.T("msg.datadir.done", done), Loc.T("settings.datadir"), MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void UpdateToggleLabel() =>

@@ -11,8 +11,8 @@ namespace Lumen.Core
     /// </summary>
     public sealed class AppSettings
     {
-        private static readonly string FilePath =
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Lumen", "settings.json");
+        // 数据根可配置：跟随 LumenPaths（默认 %LocalAppData%/Lumen/settings.json，向后兼容）。
+        private static readonly string FilePath = LumenPaths.SettingsFilePath;
 
         private static AppSettings _instance;
 

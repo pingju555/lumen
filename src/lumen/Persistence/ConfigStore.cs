@@ -11,6 +11,7 @@ using Lumen.Globals;
 using Lumen.I18n;
 using Lumen.Pages;
 using Lumen.Presets;
+using Lumen.Core;
 using Lumen.Render;
 
 namespace Lumen.Persistence
@@ -80,11 +81,11 @@ namespace Lumen.Persistence
     /// </summary>
     public static class ConfigStore
     {
-        private static readonly string Dir =
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Lumen");
-        private static string FilePath => Path.Combine(Dir, "config.json");
-        private static readonly string ProfilesDir = Path.Combine(Dir, "profiles");
-        private static readonly string MetaPath = Path.Combine(Dir, "meta.json");
+        // 数据根可配置：统一经 LumenPaths 解析（默认 %LocalAppData%/Lumen，指针文件可重定向）。
+        private static string Dir => LumenPaths.DataDir;
+        private static string FilePath => LumenPaths.ConfigFilePath;
+        private static string ProfilesDir => LumenPaths.ProfilesDir;
+        private static string MetaPath => LumenPaths.MetaPath;
         private static string ProfileFilePath(string name) => Path.Combine(ProfilesDir, Slug(name) + ".json");
         private static string Slug(string name)
         {

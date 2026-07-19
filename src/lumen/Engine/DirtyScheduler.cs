@@ -44,7 +44,7 @@ namespace Lumen.Engine
         private void Tick()
         {
             foreach (var a in _atoms)
-                if (UsesClock(a) || UsesMedia(a)) MarkDirty(a);
+                if (UsesClock(a) || UsesMedia(a) || UsesPerf(a)) MarkDirty(a);
             Flush();
             // 触发器评估（P5）：每个 tick 对全部原子（含容器子原子）检查条件，成立自动触发动作。
             // 独立于脏标记，确保即使原子自身属性未变、仅条件数据变化（如电量/媒体状态）也能响应。
@@ -77,6 +77,18 @@ namespace Lumen.Engine
             {
                 var m = kv.Value.Materialize();
                 if (m.Contains("$") && m.Contains("mi(")) return true;
+            }
+            return false;
+        }
+
+        // 性能依赖：公式含 si( 的原子需每拍重算，PDH 采样值（CPU/内存/磁盘/网络）才能即时反映。
+        // 修复项：v1.3.1 前 DirtyScheduler 仅标脏时钟/媒体类，导致所有 PDH 仪表盘首帧后静止。
+        private static bool UsesPerf(Atom a)
+        {
+            foreach (var kv in a.GetProps())
+            {
+                var m = kv.Value.Materialize();
+                if (m.Contains("$") && m.Contains("si(")) return true;
             }
             return false;
         }
