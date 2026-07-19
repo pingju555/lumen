@@ -264,12 +264,23 @@ namespace Lumen
             // 选中新原子
             atom.Select();
             _selectedAtom = atom;
-            // 同步到 PropWindow（合并窗口）
+            // 同步到 PropWindow（合并窗口）——SelectAtom 内部会导航层级 + 载入属性 + 高亮树
             if (_propWindow != null && _propWindow.IsVisible)
-            {
                 _propWindow.SelectAtom(atom);
-                _propWindow.LoadAtom(atom);
+        }
+
+        /// <summary>由 PropWindow 树选中触发：仅同步画布高亮，不回写 PropWindow（避免重建环路）。</summary>
+        internal void SelectAtomFromTree(Atom atom)
+        {
+            if (atom == null)
+            {
+                if (_selectedAtom != null) { _selectedAtom.Deselect(); _selectedAtom = null; }
+                return;
             }
+            if (ReferenceEquals(_selectedAtom, atom)) return;
+            if (_selectedAtom != null) _selectedAtom.Deselect();
+            atom.Select();
+            _selectedAtom = atom;
         }
 
         internal void DeselectCurrentAtom()
@@ -1316,28 +1327,21 @@ namespace Lumen
                     return true;
 
                 // 原子区域检测（不限编辑模式——桌面模式下有动作的原子自身 IsHitTestVisible 会拦截）
+                // 优先用**实际渲染框**（含 AutoSize 容器经测量的真实尺寸 + 已包住全部子部件）；
+                // 首次布局未完成时回退到 Bounds。容器实际框已覆盖子部件，无需再逐个遍历子坐标。
                 if (_atomHost != null)
                 {
                     var pagePt = PointFromScreen(new System.Windows.Point(screenX, screenY));
                     foreach (var a in _atomHost.Atoms)
                     {
-                        if (a.Bounds.Contains(pagePt)) return true;
-                        if (a is ContainerAtom c && ContainerContains(c, pagePt)) return true;
+                        var rb = a.GetRenderBounds(this);
+                        if (!rb.IsEmpty) { if (rb.Contains(pagePt)) return true; }
+                        else if (a.Bounds.Contains(pagePt)) return true;
                     }
                 }
                 return false;
             }
             catch { return true; }
-        }
-
-        private static bool ContainerContains(ContainerAtom c, System.Windows.Point pagePt)
-        {
-            foreach (var ch in c.Children)
-            {
-                if (ch.Bounds.Contains(pagePt)) return true;
-                if (ch is ContainerAtom cc && ContainerContains(cc, pagePt)) return true;
-            }
-            return false;
         }
 
         private bool IsElementHitAt(FrameworkElement el, int screenX, int screenY)

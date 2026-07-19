@@ -34,7 +34,11 @@ namespace Lumen.Atoms
                 Foreground = new SolidColorBrush(Colors.Gray),
                 IsHitTestVisible = false
             };
-            var imgGrid = new Grid();
+            var imgGrid = new Grid
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch
+            };
             imgGrid.Children.Add(_img);
             imgGrid.Children.Add(_placeholder);
             _border = new Border
@@ -62,7 +66,10 @@ namespace Lumen.Atoms
                 if (hasImg)
                 {
                     try { _img.Source = LoadBitmap(src); }
-                    catch { _img.Source = null; }
+                    catch { _img.Source = null; hasImg = false; }   // 加载失败：回退到占位
+                }
+                if (hasImg)
+                {
                     if (_placeholder != null) _placeholder.Visibility = Visibility.Collapsed;
                 }
                 else
@@ -71,9 +78,17 @@ namespace Lumen.Atoms
                     if (_placeholder != null) _placeholder.Visibility = Visibility.Visible;
                 }
             }
-            _border.Background = hasImg
-                ? ResolveBrush(BgProp, Ctx, Brushes.Transparent)
-                : new SolidColorBrush(Color.FromRgb(0x2A, 0x2A, 0x2A));
+            _border.Background = Brushes.Transparent;
+            var imgGrid = _border.Child as Grid;
+            if (imgGrid != null)
+            {
+                // 容器内嵌时父面板不强制尺寸，需用 MinWidth/MinHeight 保住所设 W/H，否则无图时缩成 0
+                imgGrid.MinWidth = Bounds.Width;
+                imgGrid.MinHeight = Bounds.Height;
+                imgGrid.Background = hasImg
+                    ? ResolveBrush(BgProp, Ctx, Brushes.Transparent)
+                    : new SolidColorBrush(Color.FromRgb(0xD9, 0xD9, 0xD9));
+            }
             if (System.Enum.TryParse<Stretch>(Txt(StretchProp, Ctx), true, out var st))
                 _img.Stretch = st;
             if (double.TryParse(Txt(RadiusProp, Ctx), out var r) && r > 0) _border.CornerRadius = new CornerRadius(r);

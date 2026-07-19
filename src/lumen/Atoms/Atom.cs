@@ -194,6 +194,21 @@ namespace Lumen.Atoms
         // render 后挂到 Canvas 的根 Grid（供 Popup 定位用）
         public UIElement RootElement => _root;
 
+        /// <summary>返回渲染元素在指定祖先坐标系中的**实际**包围盒（含 AutoSize 容器经 WPF 测量的真实尺寸）。
+        /// 命中检测须用此实际框，而非可能陈旧/为 0 的 Bounds（容器 Bounds.W/H 不可靠）。
+        /// 尚未完成首次布局（ActualWidth/Height≤0）时返回 Rect.Empty，调用方回退到 Bounds。</summary>
+        public Rect GetRenderBounds(Visual ancestor)
+        {
+            if (_root is not FrameworkElement fe || fe.ActualWidth <= 0 || fe.ActualHeight <= 0)
+                return Rect.Empty;
+            try
+            {
+                var t = fe.TransformToVisual(ancestor);
+                return t.TransformBounds(new Rect(0, 0, fe.ActualWidth, fe.ActualHeight));
+            }
+            catch { return Rect.Empty; }
+        }
+
         /// <summary>缩放最小尺寸（= 最小网格档），resize 不可更小。</summary>
         protected const double MinSize = 20;
 

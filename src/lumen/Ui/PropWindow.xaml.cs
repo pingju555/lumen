@@ -35,6 +35,7 @@ namespace Lumen.Ui
         private readonly Stack<ContainerAtom> _navStack = new Stack<ContainerAtom>();
         private Page _loadedPage;
         private int _selectedIndex = -1;
+        private bool _syncingSelection;   // 防止程序化恢复树选中触发反向同步的环路
         private Point _dragStart;
         private TreeView AtomsTree;
         private StackPanel BreadcrumbPanel;
@@ -90,16 +91,42 @@ namespace Lumen.Ui
             RebuildTabs();
         }
 
-        /// <summary>外部选中原子（从桌面右键触发时调用）。</summary>
+        /// <summary>外部选中原子（从画布点击 / 桌面右键触发时调用）。导航到其所在层级并高亮。</summary>
         public void SelectAtom(Atom atom)
         {
             if (atom == null) return;
-            _selectedIndex = -1;
+            NavigateTo(atom);
             var list = CurrentList();
-            if (list != null && !list.Contains(atom)) { _navStack.Clear(); list = CurrentList(); }
             _selectedIndex = list?.IndexOf(atom) ?? -1;
-            LoadAtom(atom);
-            RebuildTabs();
+            LoadAtom(atom);   // 内部触发 RebuildTabs → RebuildTree → 恢复高亮
+        }
+
+        /// <summary>调整导航栈，使 CurrentList 包含 atom（支持容器嵌套子原子）。</summary>
+        private void NavigateTo(Atom atom)
+        {
+            _navStack.Clear();
+            if (_page == null || atom == null) return;
+            if (_page.Atoms.Contains(atom)) return;
+            var path = new List<ContainerAtom>();
+            if (FindPath(_page.Atoms, atom, path))
+                foreach (var c in path) _navStack.Push(c);
+        }
+
+        /// <summary>深度优先构建根→目标父容器的路径。</summary>
+        private static bool FindPath(IList<Atom> list, Atom target, List<ContainerAtom> path)
+        {
+            if (list == null) return false;
+            foreach (var a in list)
+            {
+                if (a is ContainerAtom c)
+                {
+                    if (c.Children.Contains(target)) { path.Add(c); return true; }
+                    path.Add(c);
+                    if (FindPath(c.Children, target, path)) return true;
+                    path.RemoveAt(path.Count - 1);
+                }
+            }
+            return false;
         }
 
         // ========== Tab 构建 ==========
@@ -216,6 +243,13 @@ namespace Lumen.Ui
             var list = CurrentList();
             for (int i = 0; i < list.Count; i++)
                 AtomsTree.Items.Add(BuildNode(list[i], i == list.Count - 1));
+            // 重建后恢复当前选中项高亮（画布↔树同步的一环）。程序化恢复期间抑制回调防止环路。
+            if (_currentAtom != null)
+            {
+                _syncingSelection = true;
+                RestoreSelection(_currentAtom);
+                _syncingSelection = false;
+            }
         }
 
         private IList<Atom> CurrentList() => _navStack.Count == 0 ? _page?.Atoms : _navStack.Peek().Children;
@@ -345,11 +379,13 @@ namespace Lumen.Ui
 
         private void Tree_SelectedChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
+            if (_syncingSelection) return;   // 程序化恢复高亮触发的回调，不再反向同步
             if (e.NewValue is TreeViewItem tvi && tvi.Tag is Atom atom)
             {
                 var list = CurrentList();
                 _selectedIndex = list?.IndexOf(atom) ?? -1;
                 LoadAtom(atom);
+                _lumenOwner?.SelectAtomFromTree(atom);   // 树选中 → 画布高亮
             }
         }
 
@@ -427,13 +463,18 @@ namespace Lumen.Ui
 
         private void Delete_Click(object sender, RoutedEventArgs e)
         {
-            if (_page == null || AtomsTree == null) return;
-            var sel = AtomsTree.SelectedItem;
-            if (sel is TreeViewItem tvi && tvi.Tag is Atom target)
-            {
-                var list = AtomTree.FindParentList(_page, target);
-                if (list != null) { list.Remove(target); if (_currentAtom == target) _currentAtom = null; _externalStructural?.Invoke(); RebuildTree(); }
-            }
+            if (_page == null) return;
+            // 选中原子后树会随 RebuildTabs 重建，AtomsTree.SelectedItem 归零；以 _currentAtom 为准，回退到树选中项。
+            var target = _currentAtom;
+            if (target == null && AtomsTree?.SelectedItem is TreeViewItem tvi && tvi.Tag is Atom a) target = a;
+            if (target == null) return;
+            var list = AtomTree.FindParentList(_page, target);
+            if (list == null) return;
+            list.Remove(target);
+            _currentAtom = null; _selectedIndex = -1; _propPanel = null;
+            _lumenOwner?.SelectAtomFromTree(null);   // 同步清除画布选中
+            _externalStructural?.Invoke();           // 重组页面（移除已删原子）
+            RebuildTabs();                           // 刷新树 + 清空属性 Tab
         }
 
         /// <summary>重建树后恢复选中指定原子。</summary>

@@ -49,7 +49,8 @@ namespace Lumen.Atoms
                 var ui = child.Render();
                 AddToPanel(_panel, child, layout, ui);
             }
-            // 重叠组(Canvas) 不随子部件自动撑开尺寸，按子部件包围盒设定面板尺寸，使中心点定位与命中区域正确
+            // 重叠组(Canvas) 不随子部件自动撑开尺寸。先按声明 Bounds 估算，
+            // 布局完成后再用子部件「实际渲染尺寸」收紧，使虚线框/命中区贴合内容外轮廓（无多余留白）。
             if (layout == "overlap" && _panel is Canvas cv && Children.Count > 0)
             {
                 double maxX = 0, maxY = 0;
@@ -59,6 +60,14 @@ namespace Lumen.Atoms
                     maxY = Math.Max(maxY, ch.Bounds.Y + ch.Bounds.Height);
                 }
                 if (maxX > 0 && maxY > 0) { cv.Width = maxX; cv.Height = maxY; }
+                cv.LayoutUpdated += (s, e) => ShrinkCanvasToContent(cv);
+            }
+            // 空容器无子部件时尺寸为 0，画布上不可见且无法点选。给一个最小占位尺寸，
+            // 使虚线框可见、可点击选中（有子部件后由内容撑开，不受影响）。
+            if (Children.Count == 0)
+            {
+                _panel.MinWidth = 96;
+                _panel.MinHeight = 56;
             }
             _border = new Border
             {
@@ -96,6 +105,44 @@ namespace Lumen.Atoms
             if (layout == "overlap") return new Canvas();
             if (layout == "series") return new WrapPanel { Orientation = Orientation.Horizontal };
             return new StackPanel { Orientation = Orientation.Vertical };
+        }
+
+        /// <summary>重叠组：按子部件实际渲染尺寸收紧 Canvas，并裁剪左上角空白，使虚线框贴合内容外轮廓。
+        /// 带 0.5px 变化阈值防止 Set→LayoutUpdated 无限重排。</summary>
+        private static void ShrinkCanvasToContent(Canvas cv)
+        {
+            double minX = double.MaxValue, minY = double.MaxValue;
+            double maxX = 0, maxY = 0;
+            foreach (UIElement ui in cv.Children)
+            {
+                if (ui is not FrameworkElement fe) continue;
+                double l = Canvas.GetLeft(ui); if (double.IsNaN(l)) l = 0;
+                double t = Canvas.GetTop(ui); if (double.IsNaN(t)) t = 0;
+                if (fe.ActualWidth <= 0 || fe.ActualHeight <= 0) continue;
+                minX = Math.Min(minX, l);
+                minY = Math.Min(minY, t);
+                maxX = Math.Max(maxX, l + fe.ActualWidth);
+                maxY = Math.Max(maxY, t + fe.ActualHeight);
+            }
+            if (maxX <= minX || maxY <= minY) return;
+            double w = maxX - minX, h = maxY - minY;
+            if (Math.Abs(cv.Width - w) > 0.5 || Math.Abs(cv.Height - h) > 0.5)
+            {
+                cv.Width = w;
+                cv.Height = h;
+            }
+            // 裁剪左上角空白：将最小左上角平移到 (0,0)，避免虚线框比内容多出一圈偏移
+            if (minX > 0 || minY > 0)
+            {
+                foreach (UIElement ui in cv.Children)
+                {
+                    if (ui is not FrameworkElement fe) continue;
+                    double l = Canvas.GetLeft(fe); if (double.IsNaN(l)) l = 0;
+                    double t = Canvas.GetTop(fe); if (double.IsNaN(t)) t = 0;
+                    Canvas.SetLeft(fe, l - minX);
+                    Canvas.SetTop(fe, t - minY);
+                }
+            }
         }
 
         private static void AddToPanel(Panel panel, Atom child, string layout, UIElement ui)
