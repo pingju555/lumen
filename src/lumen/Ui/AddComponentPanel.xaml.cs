@@ -30,6 +30,7 @@ namespace Lumen.Ui
                 ("Text",    "T",   Loc.T("addcomp.text"),  Loc.T("addcomp.text.desc")),
                 ("Shape",   "◆",   Loc.T("addcomp.shape"), Loc.T("addcomp.shape.desc")),
                 ("Image",   "▣",   Loc.T("addcomp.image"), Loc.T("addcomp.image.desc")),
+                ("Gif",     "🎞",  Loc.T("addcomp.gif"),   Loc.T("addcomp.gif.desc")),
                 ("Icon",    "✦",   Loc.T("addcomp.icon"),  Loc.T("addcomp.icon.desc")),
                 ("Progress","◉",   Loc.T("addcomp.progress"), Loc.T("addcomp.progress.desc")),
                 ("Stack",   "≡",   Loc.T("addcomp.stack"), Loc.T("addcomp.stack.desc")),

@@ -7,6 +7,55 @@
 
 ---
 
+## [v1.2.0] — 2026-07-19
+
+> 实时数据 + 行为系统 + 编辑器打磨。公式体系从 19 精简到 14 函数，新增 GIF 动态图片原子。
+
+### 数据接入（P4）
+
+- **系统指标 `si`** — CPU / 内存 / 网速 / 磁盘 / 屏幕 DPI / 深色模式（PDH 采集）
+- **电池 `bi`** — 电量 / 充电状态 / 插电状态
+- **媒体 `mi`** — SMTC：标题 / 艺术家 / 专辑 / 封面 / 播放状态 / 进度 / 时长
+- **启动坞 `ai` / `an`** — 应用枚举与启动
+- **公式 Provider 闭环** — 聚合式 `DataProvider` + `EvalContext`，支持系统 / 媒体 / 启动器 / RSS 数据
+- **调色板 `bp`** — 中位切分提取封面主色
+
+### 行为系统（P5）
+
+- **9 种进场 / 循环动画** — Fade / Slide / Zoom / Drop / Pulse / Rotate / Blink / Float / Bounce（`Storyboard` 驱动）
+- **触发器 → Flow 流程系统** — 7 种动作 + 循环引用防护
+- **10 类按钮动作** — RunApp / RunFlow / ToggleEdit / SwitchPage / LockScreen / OpenLink / MediaControl / SetVar / Delay / ReadFile
+- **交互式进度动画 `ProgressAnimator`** — Timer / Formula / Touch 三种触发源；6 种动作属性（Fade / TranslateX / TranslateY / Rotate / Scale / Zoom）；5 种缓动曲线（linear / easeInOut / bounce / overshoot）
+
+### 背景 / 设置 / 打磨（P6）
+
+- **背景渲染** — 纯色 / 公式 / 图片，每页独立背景
+- **设置面板 + Profile 导入导出** — 语言 / 自启 / 快捷键信息
+- **14 种程序化质感** — 毛玻璃 / 玻璃感 / 塑料感 / 金属 / 霓虹 / 哑光 / 木纹 / 大理石 / 碳纤维 / 虹彩 / 纸张 / 布纹 / 液态，纯代码实现，不依赖位图
+- **图层混合模式** — 7 种 KLWP 混合模式（`BlendModes.ps` 像素着色器）
+- **图层模糊** — `BlurEffect` 即时生效
+- **文本原子 4 种尺寸模式** — FixedHeight / AutoWidth / FixedWidth / FitBounds
+- **函数体系精简 19 → 14** — 合并删除 `ts` / `tz` / `dp` / `uc` / `re` / `rng`；每函数 `Params` 内参标签，点击自动填入
+- **背景全透明智能穿透** — 空白处点击穿透到桌面，原子上拦截输入
+- **编辑器打磨** — PropWindow 10 项 BUG/WARNING 修复、控件样式统一、页面管理 Tab、容器选中修复、选中框增强
+
+### 新增（本轮额外）
+
+- **GIF 动态图片原子** — `GifBitmapDecoder` 解码帧 + 处置方式（RestoreBackground / RestorePrevious）感知合成，避免透明拖影；`DispatcherTimer` 换帧，`Speed` 倍速 0.25×–4×；`Render` 重建时停旧计时器防泄漏
+
+### 修复
+
+- 进度动画编辑字段恢复显示（此前被注释 `REMOVED FOR DEBUGGING`）
+- 图层 Tab 混合 / 模糊从 UI 占位升级为真实渲染
+- i18n 旧 key 清理（`prop.tab.style` / `layout` / `interaction` / `anim`）
+
+### 已知问题
+
+- NFR 门禁 7 项中 2/7 需真机验证（性能 / 内存），无代码阻塞
+- v2.0 扩展功能未开始（多屏 / 天气 / WebView2 / 本地 LLM / 动态壁纸 / 插件化）
+
+---
+
 ## [v1.1.0] — 2026-07-19
 
 ### 首个公开预发布版本
@@ -49,17 +98,7 @@
 - Shape 类型体系收敛为 Rect / Ellipse 两基元（Line 并入细矩形，RoundRect 并入矩形+圆角参数）
 - 公式函数与变量体系重构 — 八位 base62 `Atom.Id` 统一寻址
 
-### 新增函数
-
-- `si` — 系统指标（CPU / 内存 / 网速 / 磁盘 / 屏幕分辨率 / 深色模式）
-- `bi` — 电池（电量 / 充电状态）
-- `mi` — 媒体信息（SMTC：标题 / 艺术家 / 封面 / 播放状态 / 进度）
-- `mu` — 数学运算（round / sin / cos / clamp / lerp 等 26 种）
-- `ce` — 颜色运算（亮度 / 色相 / 饱和度 / 混合 / 反转）
-- `bp` — 调色板（中位切分提取封面主色）
-- `gv` / `if` / `tc` / `df` / `tf` / `ts` / `tu` / `tz` 等 19 函数
-
-### 已知问题
+### 已知问题（历史，已于 v1.2.0 修复）
 
 - 进度动画编辑字段当前被注释（`Atom.cs` 中标记 `REMOVED FOR DEBUGGING`），运行时仍生效，动画 Tab 中暂不显示
 - 图层混合/模糊为 UI 框架占位，渲染实现留 v1.2
@@ -70,15 +109,12 @@
 
 ## [Unreleased]
 
-### 待定
+### 路线图（待启动）
 
-- 进度动画编辑字段恢复显示
-- 图层 Tab 渲染增强（混合模式 / 模糊）
-- 编辑器控件统一（步进器 / 滑块 / □ 公式状态图标）
-- i18n 旧 key 清理（`prop.tab.style/layout/interaction/anim`）
-- NFR 系统化门禁测试（体积 / CPU / 帧率 / 内存）
-- v2.0 扩展功能（多屏 / 天气 / WebView2 / 本地 LLM / 插件化）
+- v2.0 扩展功能：多屏多实例 / 天气数据 / 网页 WebView2 / 本地 LLM / 动态壁纸视频 / 原子插件化 / 混合模式与 PDH 精化
+- 预建组件模板（依赖预览图体系，计划 V1.5）
 
 ---
 
 [v1.1.0]: https://github.com/pingju555/lumen/releases/tag/v1.1.0
+[v1.2.0]: https://github.com/pingju555/lumen/releases/tag/v1.2.0

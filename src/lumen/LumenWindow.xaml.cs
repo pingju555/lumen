@@ -138,6 +138,7 @@ namespace Lumen
             AtomRegistry.Register("Shape", () => new ShapeAtom());
             AtomRegistry.Register("Icon", () => new IconAtom());
             AtomRegistry.Register("Image", () => new ImageAtom());
+            AtomRegistry.Register("Gif", () => new GifAtom());
             AtomRegistry.Register("Progress", () => new ProgressAtom());
             AtomRegistry.Register("Stack", () => new StackGroupAtom());
             AtomRegistry.Register("Overlap", () => new OverlapGroupAtom());
@@ -296,8 +297,8 @@ namespace Lumen
             try { ComposeCurrentPage(); }
             catch (Exception ex) { Logger.Log("ComposeCurrentPage failed: " + ex); }
             // 部件树同步当前页
-            try { SyncTreeWindow(); }
-            catch (Exception ex) { Logger.Log("SyncTreeWindow failed: " + ex); }
+            try { SyncPropWindow(); }
+            catch (Exception ex) { Logger.Log("SyncPropWindow failed: " + ex); }
             // 2) 装饰性淡入；任何异常都保证 PageHost 回到可见。
             //    保留强引用 _fadeSb，防止局部 Storyboard 被 GC 导致淡入中断、页面卡在透明。
             try
@@ -600,7 +601,7 @@ namespace Lumen
             SaveAll();
         }
 
-        private void SyncTreeWindow()
+        private void SyncPropWindow()
         {
             if (_propWindow != null && _propWindow.IsVisible)
                 _propWindow.LoadPage(_pages.CurrentPage);

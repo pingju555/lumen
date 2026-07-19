@@ -30,11 +30,12 @@ Lumen is my answer to that question — bringing KLWP-grade freedom and expressi
 ## Features
 
 - **Full-screen overlay, non-topmost**: covers desktop icons/wallpaper while ordinary windows float normally above it; the taskbar can auto-hide.
-- **Six atom types**: text / shape / icon / image / progress / container — draggable, re-styleable, and nestable.
+- **Seven atom types**: text / shape / icon / image / GIF / progress / container — draggable, re-styleable, and nestable.
 - **Multi-page + dual mode**: switch instantly between edit mode (arrange, tweak properties) and desktop mode (static display + click interaction + trigger automation).
-- **Formula engine**: `$expr$`-wrapped evaluation, 19 built-in functions, with operators, colours and logic; bind to system / media / launcher data.
+- **Formula engine**: `$expr$`-wrapped evaluation, 14 built-in functions (df/tf/tu/si/bi/tc/if/fl/mu/mi/ce/bp/gv/wg), with operators, colours and logic; bind to system / media / RSS data.
 - **Data sources & variables**: system data (`si`: CPU/memory/network/disk), battery (`bi`), media (`mi`/`mu`), launcher (`ai`/`an`); global variables (`gv`) shared across pages.
 - **Click actions + triggers**: run a program / media control / page switch / lock screen / open a link on click; automatically run action flows (Once / While) when conditions are met.
+- **Layer blend & blur**: 7 KLWP blend modes (pixel shader) + layer blur, pure-code implementation.
 - **Multi-profile workspaces**: each profile = all pages + per-page settings + global variables + user presets; switchable, exportable and importable.
 - **Built-in user manual**: the "User Manual" profile loads automatically on first run; browse pages with `Ctrl+Alt+→ / ←`.
 - **Bilingual UI**: built-in Simplified Chinese / British English language switcher (choose in Settings, remembered locally).
@@ -72,7 +73,7 @@ src/lumen/
 ├── LumenWindow.xaml(.cs)    Main window (pages / modes / profiles / shortcuts)
 ├── Atoms/                   Six atom types + registry + property system
 ├── Render/                  Coordinates / grid / layers / background
-├── Formula/                 Lexer / parser / evaluator + 19 functions
+├── Formula/                 Lexer / parser / evaluator + 14 functions
 ├── Actions/                 Animation / flow / action system
 ├── Persistence/             Multi-profile persistence (ConfigStore)
 ├── Globals/ Engine/ Native/ Global vars / dirty scheduler / P/Invoke
