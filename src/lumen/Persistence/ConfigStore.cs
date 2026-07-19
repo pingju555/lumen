@@ -115,7 +115,7 @@ namespace Lumen.Persistence
                 File.WriteAllText(ProfileFilePath(profileName), JsonSerializer.Serialize(doc, Opt));
                 SetActive(profileName);
             }
-            catch (Exception ex) { Debug.WriteLine($"Config save failed: {ex.Message}"); }
+            catch (Exception ex) { Logger.Log($"Config save failed: {ex.Message}"); }
         }
 
         private static Document BuildDocument(GvStore gv, IReadOnlyList<Page> pages, string name)
@@ -140,7 +140,7 @@ namespace Lumen.Persistence
             var res = new LoadResult();
             if (!File.Exists(FilePath)) return res;
             try { return ParseDoc(File.ReadAllText(FilePath)); }
-            catch (Exception ex) { Debug.WriteLine($"Config load failed: {ex.Message}"); }
+            catch (Exception ex) { Logger.Log($"Config load failed: {ex.Message}"); }
             return res;
         }
 
@@ -172,7 +172,7 @@ namespace Lumen.Persistence
             var fp = ProfileFilePath(name);
             if (!File.Exists(fp)) return null;
             try { return ParseDoc(File.ReadAllText(fp)); }
-            catch (Exception ex) { Debug.WriteLine($"Profile load failed: {ex.Message}"); }
+            catch (Exception ex) { Logger.Log($"Profile load failed: {ex.Message}"); }
             return null;
         }
 
@@ -220,6 +220,33 @@ namespace Lumen.Persistence
                 }
                 SetActive(active);
             }
+
+            // 如果当前激活档是内置手册，直接从嵌入资源加载并强制刷新文件，避免旧版手册残留。
+            if (IsActiveProfileManual())
+            {
+                try
+                {
+                    var asm = typeof(ConfigStore).Assembly;
+                    string resName = Loc.Cur.StartsWith("en", StringComparison.OrdinalIgnoreCase)
+                        ? "Lumen.Resources.help_manual.en-GB.json"
+                        : "Lumen.Resources.help_manual.json";
+                    using var stream = asm.GetManifestResourceStream(resName);
+                    if (stream != null)
+                    {
+                        using var reader = new StreamReader(stream);
+                        var json = reader.ReadToEnd();
+                        var manual = ParseDoc(json);
+                        if (manual != null)
+                        {
+                            try { File.WriteAllText(ProfileFilePath(active), json); }
+                            catch (Exception ex) { Logger.Log($"Manual file refresh failed: {ex.Message}"); }
+                            return (manual, active);
+                        }
+                    }
+                }
+                catch (Exception ex) { Logger.Log($"LoadActive manual resource fallback failed: {ex.Message}"); }
+            }
+
             return (Load(active) ?? new LoadResult(), active);
         }
 
@@ -295,7 +322,7 @@ namespace Lumen.Persistence
                 using var stream = asm.GetManifestResourceStream(resName);
                 if (stream == null)
                 {
-                    Debug.WriteLine($"InstallBuiltinManual: resource not found: {resName}");
+                    Logger.Log($"InstallBuiltinManual: resource not found: {resName}");
                     return null;
                 }
                 using var reader = new StreamReader(stream);
@@ -315,13 +342,21 @@ namespace Lumen.Persistence
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"InstallBuiltinManual failed: {ex.Message}");
+                Logger.Log($"InstallBuiltinManual failed: {ex.Message}");
                 return null;
             }
         }
 
         /// <summary>仅用嵌入资源刷新内置手册文件（覆盖旧版），不切换激活档。每次启动调用以保证最新。</summary>
-        public static void RefreshBuiltinManual() => InstallBuiltinManual(activate: false);
+        public static void RefreshBuiltinManual()
+        {
+            try
+            {
+                var name = InstallBuiltinManual(activate: false);
+                Logger.Log($"RefreshBuiltinManual: {(name != null ? "ok" : "failed")}");
+            }
+            catch (Exception ex) { Logger.Log($"RefreshBuiltinManual failed: {ex.Message}"); }
+        }
 
         /// <summary>当前激活档是否为内置使用手册（任一语言版：使用手册 / User Manual）。</summary>
         public static bool IsActiveProfileManual()
@@ -386,7 +421,7 @@ namespace Lumen.Persistence
                 Directory.CreateDirectory(Dir);
                 File.WriteAllText(MetaPath, JsonSerializer.Serialize(new { active, lang }));
             }
-            catch (Exception ex) { Debug.WriteLine($"WriteMeta failed: {ex.Message}"); }
+            catch (Exception ex) { Logger.Log($"WriteMeta failed: {ex.Message}"); }
         }
 
         private static string ReadActive()
@@ -414,7 +449,7 @@ namespace Lumen.Persistence
             //  不匹配→Load 永远返回空→每次启动/切档都 SeedDefaultProject 兜底，profile 内容永远丢失。）
             Document document = null;
             try { document = JsonSerializer.Deserialize<Document>(json, Opt); }
-            catch (Exception ex) { Debug.WriteLine($"ParseDoc deserialize failed: {ex.Message}"); }
+            catch (Exception ex) { Logger.Log($"ParseDoc deserialize failed: {ex.Message}"); }
 
             if (document != null && document.Pages != null && document.Pages.Count > 0)
             {
