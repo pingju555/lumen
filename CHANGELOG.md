@@ -43,6 +43,13 @@
 
 - **GIF 动态图片原子** — `GifBitmapDecoder` 解码帧 + 处置方式（RestoreBackground / RestorePrevious）感知合成，避免透明拖影；`DispatcherTimer` 换帧，`Speed` 倍速 0.25×–4×；`Render` 重建时停旧计时器防泄漏
 
+### 打包 / 发布（Release）
+
+- **版本号治理** — `Lumen.csproj` 单一 `<Version>1.2.0</Version>` 源，`AssemblyVersion` / `FileVersion` / `ProductVersion` 由此派生（此前硬编码 1.0.0.0）
+- **便携 ZIP 打包脚本** — `packaging/package.ps1`：`dotnet publish --self-contained win-x64` 捆绑 .NET 8 运行时（用户免装），扁平压缩，解压后 `lumen.exe` 位于根目录；移除 `*.pdb`、输出 SHA256
+- **产物** — `dist/Lumen-<version>-win-x64.zip`（`*.zip` / `dist/` / `artifacts/` 已 gitignore，不入库）
+- **范围** — 仅便携 ZIP，无安装器 / 无 MSIX / 暂不代码签名（SmartScreen 警告可接受）
+
 ### 修复
 
 - 进度动画编辑字段恢复显示（此前被注释 `REMOVED FOR DEBUGGING`）

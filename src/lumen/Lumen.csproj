@@ -10,8 +10,8 @@
     <RootNamespace>Lumen</RootNamespace>
     <ApplicationIcon>lumen.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
+    <!-- 单一版本源：AssemblyVersion/FileVersion/ProductVersion 由此派生 -->
+    <Version>1.2.0</Version>
   </PropertyGroup>
 
   <ItemGroup>

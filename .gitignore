@@ -27,6 +27,10 @@ workbuddy.db
 *.aab
 *.zip
 
+# Packaging output / staging
+dist/
+artifacts/
+
 # Temp / Logs
 *.log
 commit_msg.txt
