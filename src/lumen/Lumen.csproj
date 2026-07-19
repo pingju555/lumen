@@ -11,7 +11,7 @@
     <ApplicationIcon>lumen.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- 单一版本源：AssemblyVersion/FileVersion/ProductVersion 由此派生 -->
-    <Version>1.2.0</Version>
+    <Version>1.2.1</Version>
   </PropertyGroup>
 
   <ItemGroup>

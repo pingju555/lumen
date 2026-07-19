@@ -51,7 +51,7 @@ Write-Host "[1/4] Publishing framework-dependent $Runtime (v$Version) ..."
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed (exit $LASTEXITCODE)" }
 
 # 去除调试符号
-Get-ChildItem $staging -Filter *.pdb -Recurse | Remove-Item -Force
+Get-ChildItem $staging -Filter *.pdb -Recurse | ForEach-Object { Remove-Item $_.FullName -Force }
 
 # 确认入口存在
 $exe = Join-Path $staging "lumen.exe"

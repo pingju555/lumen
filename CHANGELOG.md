@@ -7,6 +7,18 @@
 
 ---
 
+## [v1.2.1] — 2026-07-19
+
+> v1.2.0 发布后的缺陷修复补丁。
+
+### 修复
+
+- **项目列表删除功能恢复** — 树重建后 `SelectedItem` 归零导致删除失效，`Delete_Click` 改以 `_currentAtom` 为准，删后清理属性 Tab 与画布选中
+- **项目列表 ↔ 桌面画布选中双向同步** — 新增 `SelectAtomFromTree`（树→画布，防环路）；`SelectAtom` 递归导航到父容器层级；`RebuildTree` 恢复高亮；`_syncingSelection` 隔断回环
+- **堆叠组 / 重叠组选中与右键修复** — 窗口穿透判定 `HitTestAtScreen` 改用实际渲染框 `GetRenderBounds`（`TransformToVisual` + `RenderSize`），替换原 `Bounds` 坐标错乱路径；删除 `ContainerContains` 局部/全局坐标系混用
+- **图像原子无图占位** — 公式无图像或解码失败时整尺寸淡灰（`0xD9D9D9`）铺满 + 居中「无图像」文本；有图时还原 `bg` 底色
+- **容器虚线框贴合内容外轮廓** — 重叠组 `ShrinkCanvasToContent` 按子部件实际包围盒（含左上角偏移）收紧 Canvas，裁剪空白；堆叠组/序列组本就自动 hug，无需改动
+
 ## [v1.2.0] — 2026-07-19
 
 > 实时数据 + 行为系统 + 编辑器打磨。公式体系从 19 精简到 14 函数，新增 GIF 动态图片原子。
@@ -56,11 +68,6 @@
 - 进度动画编辑字段恢复显示（此前被注释 `REMOVED FOR DEBUGGING`）
 - 图层 Tab 混合 / 模糊从 UI 占位升级为真实渲染
 - i18n 旧 key 清理（`prop.tab.style` / `layout` / `interaction` / `anim`）
-- **项目列表删除功能恢复** — 树重建后 `SelectedItem` 归零导致删除失效，`Delete_Click` 改以 `_currentAtom` 为准，删后清理属性 Tab 与画布选中
-- **项目列表 ↔ 桌面画布选中双向同步** — 新增 `SelectAtomFromTree`（树→画布，防环路）；`SelectAtom` 递归导航到父容器层级；`RebuildTree` 恢复高亮；`_syncingSelection` 隔断回环
-- **堆叠组 / 重叠组选中与右键修复** — 窗口穿透判定 `HitTestAtScreen` 改用实际渲染框 `GetRenderBounds`（`TransformToVisual` + `RenderSize`），替换原 `Bounds` 坐标错乱路径；删除 `ContainerContains` 局部/全局坐标系混用
-- **图像原子无图占位** — 公式无图像或解码失败时整尺寸淡灰（`0xD9D9D9`）铺满 + 居中「无图像」文本；有图时还原 `bg` 底色
-- **容器虚线框贴合内容外轮廓** — 重叠组 `ShrinkCanvasToContent` 按子部件实际包围盒（含左上角偏移）收紧 Canvas，裁剪空白；堆叠组/序列组本就自动 hug，无需改动
 
 ### 已知问题
 
