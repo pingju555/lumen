@@ -1,9 +1,0 @@
-[12:28:29] === Lumen Acceptance Tests ===
-[12:28:29] BaseDir: D:\Main\AI Quest&Project\桌面覆盖层\src\Lumen.AcceptanceTests\bin\Release\net8.0-windows10.0.22621.0\
-[12:28:29] Exe: D:\Main\AI Quest&Project\桌面覆盖层\src\lumen\bin\Release\net8.0-windows10.0.22621.0\lumen.exe
-[12:28:29] Exe exists: True
-[12:28:32] PASS: Lumen launched
-[12:28:32] Screenshot: D:\Main\AI Quest&Project\桌面覆盖层\src\Lumen.AcceptanceTests\bin\Release\net8.0-windows10.0.22621.0\Screenshots\01_01_launched.png
-[12:28:32] Sending right-click to window handle 000A1342...
-[12:28:39] All windows: '', 'Windows PowerShell', '桌面覆盖层 - 文件资源管理器', '桌面覆盖层 - 文件资源管理器', 'Exploring the Big Apple - 文件资源管理器', '管理员的窥视 下载 和另外 2 个页面 - 个人 2 - Microsoft​ Edge', 'Lumen'
-[12:28:39] FAIL: Edit mode - PropWindow not found

@@ -1,0 +1,29 @@
+# Lumen .gitignore — 只跟踪 src/lumen/ 核心项目
+
+# Build output
+bin/
+obj/
+
+# IDE / OS
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+Thumbs.db
+.DS_Store
+
+# Memory / WorkBuddy
+.workbuddy/
+workbuddy.db
+
+# Test / Experiment
+src/cbtest/
+
+# Large binaries
+*.apk
+*.aab
+
+# Temp / Logs
+*.log
+commit_msg.txt
