@@ -475,12 +475,16 @@ namespace Lumen.Atoms
             // 桌面模式下，绑定了动作的原子可被点击（拦截该区域输入以触发动作）；
             // 无动作的原子仍不可命中，点击穿透到覆盖层（保持桌面静态展示）。
             grid.IsHitTestVisible = EditMode || hasAction;
+            grid.Cursor = !EditMode && hasAction ? Cursors.Hand : null;
             // P6-03: 已移除缩放手柄，不再需要调用 SetHandlesVisible
             grid.ContextMenu = ContextMenuFactory?.Invoke(this);
 
-            // 移动手柄光标：编辑态用于拖拽
+            // 移动手柄：编辑态用于拖拽；桌面态应交还点击给内容（不然覆盖整层的 Thumb 会吞掉动作）
             if (_moveThumb != null)
-                _moveThumb.Cursor = Cursors.SizeAll;
+            {
+                _moveThumb.IsHitTestVisible = EditMode;
+                _moveThumb.Cursor = EditMode ? Cursors.SizeAll : null;
+            }
 
             // 仅桌面模式 + 有动作时挂点击；编辑模式不挂（点击用于拖拽/选中）。
             grid.MouseLeftButtonUp -= OnClickAction;

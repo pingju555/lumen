@@ -17,7 +17,7 @@
 - **手册画布改为 1920×1080 并重新排版** — 原先沿用 2600×1500 虚拟坐标，在 16:9 屏幕（1080p/1440p）上底部被裁切，封面卡片只能显示 12 个中的 11 个。现改为 1920×1080 16:9 画布，封面 12 主题卡片改为 3 列×4 行 + 底部通栏「功能陈列」入口；内容页、画廊页（质感/形状/性能/音乐/时钟/动画/布局/公式/变量/预设/图标图像Gif）全部按 1080p 重新布局，所有原子均落在 1920×1080 范围内，无溢出
 - **内置手册从嵌入资源兜底加载** — 即使 `profiles/使用手册.json` 文件刷新失败（旧版残留、被占用、权限等），只要当前激活档为内置手册，启动时直接从程序集嵌入资源解析最新手册（25 页/583 原子），避免显示旧版 2 页手册；`ConfigStore` 中所有 `Debug.WriteLine` 改为 `Logger.Log`，Release 构建下异常也能落入 `<数据根>/lumen.log` 便于排查
 - **窗框回退至 v1.3.0 状态** — 撤销此前临时引入的窗框统一（共享 `ChromeWindow` 轻量化 + PropWindow 接入），恢复至 v1.3.0 原状：设置/配置档/页面背景窗口继承 `ChromeWindow` 重风格（标题栏 36 / 14×14 蓝色方块 / 13px 标题 / 底部 `BgSunken` 圆角），属性窗口（PropWindow）回归独立自绘轻量风格（32 / 12×12 / 12）。便携配置默认位置与内置手册刷新均保持不变
-- **配置默认位置改为便携（随 exe）** — `Core/LumenPaths.DefaultDataDir` 由 `%LocalAppData%/Lumen` 改为**程序（exe）所在文件夹**。即 zip 解压到哪，配置（profiles/config/settings/lang）与日志就落在哪（exe 旁），实现真正的便携运行，无需安装、不写系统目录。`lumen.location` 指针文件仍位于 exe 旁，用于重定向到任意其它文件夹（设置 → 数据存储位置一键迁移）。`Core/Logger` 回退由 `%TEMP%/lumen.log` 改为 `<exe 文件夹>/lumen.log`，与便携默认根一致。`App.MaybeAutoMigrate` 增加旧 `%LocalAppData%/Lumen` → 便携默认（或指针位置）的一次性迁移提示，从 v1.3.1 及更早升级不丢旧数据
+- **修复桌面模式点击动作失效** — 原子 `FullDraggable` 中覆盖整层的 `Thumb` 在桌面模式下仍 `IsHitTestVisible=true` 且 `Cursor=SizeAll`，导致绑定 `ClickAction` 的原子（如手册的「上一页/下一页」按钮）被 Thumb 拦截输入，点击无反应且光标呈十字箭头。现 `ApplyEditModeTo` 仅在编辑模式让 Thumb 参与命中；桌面模式下有 `ClickAction` 的原子交还鼠标给 Grid，触发 `OnClickAction` 并显示 `Hand` 光标
 
 ---
 
