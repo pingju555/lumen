@@ -27,7 +27,7 @@ dotnet build -c Release
 ```
 
 > 项目是纯 WPF / C#，无第三方 UI 框架，无需 `npm` / `restore` 外部包。
-> 本地运行配置在 `%LocalAppData%/Lumen/`（配置档、日志、手册种子档）。
+> 本地运行配置默认在**程序（exe）所在文件夹**（便携：配置随 exe 走）；可在「设置 → 数据存储位置」改到任意文件夹并一键迁移；旧 `%LocalAppData%/Lumen/` 数据首次启动会提示迁移。
 
 ## 代码规范
 

@@ -179,6 +179,10 @@ namespace Lumen.Persistence
         /// <summary>载入激活的配置档：首次运行从旧 config.json 迁移或播种默认档；返回 (结果, 激活档名)。</summary>
         public static (LoadResult result, string active) LoadActive()
         {
+            // 每次启动都刷新内置手册文件（覆盖旧版），避免「新手册未加载」。
+            // 仅写文件，不切换激活档；若用户当前激活的是手册，则自然读到最新版本。
+            RefreshBuiltinManual();
+
             if (!Directory.Exists(ProfilesDir) || Directory.GetFiles(ProfilesDir, "*.json").Length == 0)
             {
                 if (File.Exists(FilePath)) // 迁移旧单文件配置（一次性：迁移成功后删除源文件，避免反复迁移）
@@ -278,7 +282,8 @@ namespace Lumen.Persistence
         /// 写入 profiles/&lt;文档名&gt;.json（每次覆盖以保持最新），并登记为激活档。
         /// 返回配置档名（失败返回 null）。
         /// </summary>
-        public static string InstallBuiltinManual()
+        /// <param name="activate">true=安装后设为激活档（首次运行/迁移）；false=仅刷新手册文件，不切换激活档。</param>
+        public static string InstallBuiltinManual(bool activate = true)
         {
             try
             {
@@ -305,7 +310,7 @@ namespace Lumen.Persistence
                 catch { }
                 Directory.CreateDirectory(ProfilesDir);
                 File.WriteAllText(ProfileFilePath(name), json);
-                SetActive(name);
+                if (activate) SetActive(name);
                 return name;
             }
             catch (Exception ex)
@@ -314,6 +319,9 @@ namespace Lumen.Persistence
                 return null;
             }
         }
+
+        /// <summary>仅用嵌入资源刷新内置手册文件（覆盖旧版），不切换激活档。每次启动调用以保证最新。</summary>
+        public static void RefreshBuiltinManual() => InstallBuiltinManual(activate: false);
 
         /// <summary>当前激活档是否为内置使用手册（任一语言版：使用手册 / User Manual）。</summary>
         public static bool IsActiveProfileManual()

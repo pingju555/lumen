@@ -15,8 +15,8 @@ using Page = Lumen.Pages.Page;
 
 namespace Lumen.Ui
 {
-    /// <summary>编辑主控窗口：扁平 TabControl（项目 + 属性 + 网格 + 背景）。</summary>
-    public partial class PropWindow : Window
+    /// <summary>编辑主控窗口：扁平 TabControl（项目 + 属性 + 网格 + 背景）。继承自 ChromeWindow 统一框架。</summary>
+    public partial class PropWindow : ChromeWindow
     {
         // ---- 外部注入 ----
         private GvStore _gv;
@@ -54,15 +54,9 @@ namespace Lumen.Ui
         {
             InitializeComponent();
             Left = 60; Top = 80;
-            CloseBtn.Click += (s, e) => Close();
             DeselectBtn.Click += (s, e) => _lumenOwner?.DeselectCurrentAtom();
             CancelBtn.Click += (s, e) => _lumenOwner?.DeselectCurrentAtom();
             ApplyBtn.Click += (s, e) => ApplyCurrent();
-        }
-
-        private void TitleBar_MouseDown(object sender, MouseButtonEventArgs e)
-        {
-            if (e.ChangedButton == MouseButton.Left) DragMove();
         }
 
         public void InitContext(GvStore gv, EvalContext ctx) { _gv = gv; _ctx = ctx; }
@@ -501,7 +495,7 @@ namespace Lumen.Ui
         {
             _currentAtom = atom;
             if (atom == null) return;
-            Title = Loc.T("propwin.editing", atom.Type);
+            TitleText = Loc.T("propwin.editing", atom.Type);
 
             // 清理旧 panel 事件绑定——解除旧 panel 的闭包引用避免内存泄漏
             if (_propPanel != null)

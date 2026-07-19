@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
 using Lumen.Core;
@@ -53,27 +54,31 @@ namespace Lumen
         }
 
         /// <summary>
-        /// 首次启动自动迁移：若指针文件指向一个「空」的自定义数据位置，而默认 %LocalAppData%/Lumen 仍含旧数据，
-        /// 弹窗询问是否迁移（复制）到当前配置位置。选择「否」则保留旧数据不动、以空配置运行（可稍后手动迁移）。
+        /// 首次启动自动迁移：若「当前数据位置」（指针指定，否则便携默认 = exe 文件夹）为空，
+        /// 而旧默认位置 %LocalAppData%/Lumen 仍含旧数据，弹窗询问是否迁移（复制）到当前数据位置。
+        /// 选择「否」则保留旧数据不动、以空配置运行（可稍后手动迁移）。
+        /// 覆盖从 v1.3.1 及更早（数据在 %LocalAppData%/Lumen）升级到便携默认（exe 文件夹）的场景。
         /// </summary>
         private static void MaybeAutoMigrate()
         {
             try
             {
-                var active = LumenPaths.DataDir;
-                var def = LumenPaths.DefaultDataDir;
-                if (string.Equals(active, def, StringComparison.OrdinalIgnoreCase)) return; // 未重定向，无需处理
-                if (LumenPaths.HasData(active)) return;   // 自定义位置已有数据
-                if (!LumenPaths.HasData(def)) return;      // 默认位置也无数据
+                var target = LumenPaths.DataDir;                       // 指针指定位置，否则便携默认（exe 文件夹）
+                var portableDefault = LumenPaths.DefaultDataDir;         // 便携默认 = exe 文件夹
+                var legacy = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Lumen");
 
-                var msg = "在默认位置发现旧数据：\n" + def +
-                          "\n\n是否迁移到当前配置位置？\n" + active +
+                if (LumenPaths.HasData(target)) return;            // 当前位置已有数据，无需处理
+                if (!LumenPaths.HasData(legacy)) return;         // 旧默认位置也无数据
+
+                var msg = "在旧默认位置发现旧数据：\n" + legacy +
+                          "\n\n是否迁移到当前数据位置？\n" + target +
                           "\n\n（选择「否」将使用空配置，旧数据保留不动）";
                 var res = MessageBox.Show(msg, "Lumen", MessageBoxButton.YesNo, MessageBoxImage.Question);
                 if (res == MessageBoxResult.Yes)
                 {
-                    LumenPaths.CopyAll(def, active);
-                    Logger.Log($"Auto-migrated data {def} -> {active}");
+                    LumenPaths.CopyAll(legacy, target);
+                    Logger.Log($"Auto-migrated legacy data {legacy} -> {target}");
                 }
             }
             catch (Exception ex) { Logger.Log($"MaybeAutoMigrate failed: {ex.Message}"); }

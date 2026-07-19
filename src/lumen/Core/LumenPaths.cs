@@ -7,17 +7,17 @@ namespace Lumen.Core
     /// 可配置的数据根目录：profiles / config / settings / lang 全部位于此目录下。
     /// 解析优先级（GUI 模式，无命令行覆盖）：
     ///   1) 程序目录旁的指针文件 <c>lumen.location</c>（用户经 GUI 设定）
-    ///   2) 默认 %LocalAppData%/Lumen
+    ///   2) 默认 = 程序（exe）所在文件夹（便携模式：zip 解压到哪，配置就随 exe 落在哪）
     /// 指针文件置于 exe 旁（而非数据根内），故迁移数据本身不会带走指针。
-    /// 日志（%TEMP%/lumen.log）与第三方缓存（网易云/QQ 音乐）不在此范围内。
+    /// 日志（&lt;数据根&gt;/lumen.log）与第三方缓存（网易云/QQ 音乐）不在此范围内。
     /// </summary>
     public static class LumenPaths
     {
         private const string PointerFile = "lumen.location";
 
-        /// <summary>出厂默认数据根：%LocalAppData%/Lumen。</summary>
+        /// <summary>出厂默认数据根：程序（exe）所在文件夹（便携模式，配置随 exe 走）。</summary>
         public static string DefaultDataDir =>
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Lumen");
+            AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
         /// <summary>当前生效的数据根（已校验存在性的绝对路径，不含末尾斜杠）。</summary>
         public static string DataDir
