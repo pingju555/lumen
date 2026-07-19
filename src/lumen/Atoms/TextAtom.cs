@@ -135,6 +135,24 @@ namespace Lumen.Atoms
                     FitFontToBounds(cw, ch);
                     break;
             }
+
+            // 让 align 属性真正影响原子在 Bounds 内的水平/垂直位置：
+            // FixedHeight 等模式下 Border 默认靠左上，导致 Center/Right 失效。
+            var align = Txt(AlignProp, Ctx).Trim();
+            switch (align.ToLowerInvariant())
+            {
+                case "center":
+                    _bgBorder.HorizontalAlignment = HorizontalAlignment.Center;
+                    _bgBorder.VerticalAlignment = VerticalAlignment.Center;
+                    break;
+                case "right":
+                    _bgBorder.HorizontalAlignment = HorizontalAlignment.Right;
+                    break;
+                case "justify":
+                    _bgBorder.HorizontalAlignment = HorizontalAlignment.Stretch;
+                    break;
+                // Left 保持默认（由 sizing 分支已设定）
+            }
         }
 
         /// <summary>逐步缩小字号直至文本宽度 <= 约束宽度（AutoWidth 模式）。</summary>
