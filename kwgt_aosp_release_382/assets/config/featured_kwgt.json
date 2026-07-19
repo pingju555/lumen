@@ -1,0 +1,235 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "title": "Huk",
+      "author": "PPick",
+      "desc": "Huge pack with a LOT of different widgets from weather to clocks, you just cant miss this",
+      "url": "https://play.google.com/store/apps/details?id=hukkwgt.kustom.pack",
+      "preview": "https://lh3.googleusercontent.com/FXOQfnSSYHRau_OA-5QsdAHRVyPDH_SNLGo-7fGOD8hDvWtu3sqV-DKoiHq9FaKE7gM=h480-rw",
+      "icon": "https://lh3.googleusercontent.com/4Yw0HZZGuDcZROMvjWCpr-F37qxjn_WhRCxatWeA4UlNAPrYh1d0f7lKBsvP8hyabSVb=w128-rw",
+      "compact": 0,
+      "pro": 0
+    },
+    {
+      "title": "MatPop",
+      "author": "BaconBits",
+      "desc": "15 Widgets and Komponents all in glorious Material Design",
+      "url": "https://play.google.com/store/apps/details?id=com.baconbits.klwp.matpopforkustom",
+      "preview": "https://lh3.googleusercontent.com/Wa5l5DbQfj5YoTlcqT6SnuxSetuBA2dyHTduhHsVwPQ8ado0ySS8-ZGQNI3teidPJQ=h480-rw",
+      "icon": "https://lh3.googleusercontent.com/o3sFLmGAaAehzkgLSeNV6MOF2_eD2bXpiwcdPC5ip2wJqb5FbRRIpRcWTVE6bgTH3trG=w128-rw",
+      "compact": 0,
+      "pro": 0
+    },  
+    {
+      "title": "X",
+      "author": "Kwerdenker",
+      "desc": "Simple widget based around a cross-like shaped as the background for a clock and date, huge amount of globals to configure",
+      "url": "https://play.google.com/store/apps/details?id=de.thinkkwer.kwgt.x",
+      "preview": "https://lh3.googleusercontent.com/3uuy0sR2I_FBnnyAOdDkMY64LHSQnlNUd_8Y8pShZrIhZgd2VTyAwoN-ghZpfL7k9PKA=h480-rw",
+      "icon": "https://lh3.googleusercontent.com/Z8_ypeTm77A4gW6w3ar2W-QA22bDK8W8WR4Iw_Zz2yBx1aEV9zj3UMIvhx20NNWPrg=w128-rw",
+      "compact": 0,
+      "pro": 0
+    },
+    {
+      "title": "Minimal VL1",
+      "author": "Buzurioe",
+      "desc": "A set of minimal analog clocks in some way inspired by the crazy world of Wes Anderson",
+      "url": "https://play.google.com/store/apps/details?id=org.buzurioe.minimalvl1",
+      "preview": "https://lh3.googleusercontent.com/rdEyGQfoAJWCp_SRyAx_2z8eyOC9yMSdxYYb7mTHl38SS4Z9glAsF4tIcE51Q0LIdQ=h480-rw",
+      "icon": "https://lh3.googleusercontent.com/N-1Wn1y91A5VBrpHHziTZakndERM-coea0eCFwd92h_Aqg9s7_fDUapqmwCE8PrluGU=w128-rw",
+      "compact": 0,
+      "pro": 0
+    },
+    {
+      "title": "GreyedWidgets",
+      "author": "Support+",
+      "desc": "Gray widgets with clock, battery and weather.",
+      "url": "https://play.google.com/store/apps/details?id=com.widget.greyedwidgets",
+      "preview": "https://lh3.googleusercontent.com/qHosJsbAoRgbZT777YcnPfTjqhnGGb-TmBmmusPbfE1AmWhtI-DCqd2idUzOD9cfSg=h480-rw",
+      "icon": "https://lh3.googleusercontent.com/9k-YxV7hck-vCvR82tDqr2CcJZJhOZKTZO1YyL_aD6aP1xSVye3-lx2x11bbmdXRvrU=w128-rw",
+      "compact": 0,
+      "pro": 0
+    },
+    {
+      "title": "Ocea",
+      "author": "Suraj Hodi / Lou Ivy",
+      "desc": "Great pack with a lot of widgets featuring weather sets by Zaibun Alexander and Naman Rastog",
+      "url": "https://play.google.com/store/apps/details?id=team.ocea.kwgt",
+      "preview": "https://lh3.googleusercontent.com/r6jaQYRimo46gZ9ZbRvv6XJDmmzGUOyk4qnyIpo_nECRrkeFCgdJTHWtJa33fCrPQXTb=h480-rw",
+      "icon": "https://lh3.googleusercontent.com/WrcZry0PcFHZ89G6CG7PWjV7_1xnL88rdNyGYXPoJ8VKL6gr1aQ775r8thRWLG-ZJgK4=w128-rw",
+      "compact": 0,
+      "pro": 0
+    },
+    {
+      "title": "Time",
+      "author": "Suraj Hodi",
+      "desc": "Huge pack of more than 100 widgets created by Suraj Hodi and packaged by Carla Jacobs, get it now!",
+      "url": "https://play.google.com/store/apps/details?id=time.kwgt.surajhodi",
+      "preview": "https://lh3.googleusercontent.com/YTNzsvvf8s4ZJfDwbABt6P0yGu0QFZFLYEH6_gRK2r9sf00prGW72Ic6evtiXoYJ_Q=h480-rw",
+      "icon": "https://lh3.googleusercontent.com/c5KfdsvNZIB-9ECjBQeT4EIvNY-v98pDES6rsLY8XeeSSLKY1R2dYYb5R0zkhqaKpXQ=w128-rw",
+      "compact": 0,
+      "pro": 1
+    },
+    {
+      "title": "Unity",
+      "author": "Sean Miller",
+      "desc": "Three dedicated designers making beautiful widgets for your enjoyment, costantly updated, dedicated community, get it now!",
+      "url": "https://play.google.com/store/apps/details?id=com.bedefined.unitykwgt",
+      "preview": "https://lh3.googleusercontent.com/BjQL_tloOvpPRRo2D1cSUx6fC5JXBO67qa8lp4adyyRgvT_LgpUGSbGkFB1iYGgCBes=h480-rw",
+      "icon": "https://lh3.googleusercontent.com/TAKN7iVwIv1qOCk0OVPQZS4csdLQBUcdL2ojNUhaJ5ytDWKIApvwuLxg3HvecAqMtvk=w128-rw",
+      "compact": 0,
+      "pro": 1
+    },
+    {
+      "title": "RL Collection",
+      "author": "RL Designs",
+      "desc": "Great pack of widgets with stilish clocks, weather and date.",
+      "url": "https://play.google.com/store/apps/details?id=rl.kwgt.pack",
+      "preview": "https://lh3.googleusercontent.com/efSX1KXkh6Qy7yAKE89D93LcLxq4yolZ6EeaqbxN_efh_5tIlje6b62HkYgVvbdQxWNE=h480-rw",
+      "icon": "https://lh3.googleusercontent.com/VpUDnnCoyh-qfnn-U0zM_ISa34Ynmc-5aALwW_sGnhLG2ODxlbM5tJ0wLgFdBoK5aqk=w128-rw",
+      "compact": 0,
+      "pro": 1
+    },
+    {
+      "title": "LNAG",
+      "author": "TheMVC",
+      "desc": "Great pack of stilish clock, search and music widgets",
+      "url": "https://play.google.com/store/apps/details?id=cz.mvc.LNAG",
+      "preview": "https://lh3.googleusercontent.com/prp4qxsDT1tHsbIf5K2aCnAM58XUE-MAtqmKiAXnAFBy3wQdC60TZvd-iU4O4TJqNPI=h480-rw",
+      "icon": "https://lh3.googleusercontent.com/njNEYObe51MPijoB5UVmXH8V4k7GejrdqVpNsWsV2APRFrTRmsQhX5Rv_v01k9xEhCEB=w128-rw",
+      "compact": 0,
+      "pro": 1
+    },
+    {
+      "title": "Milus",
+      "author": "Edwin MacalopÃº",
+      "desc": "Classy and minimal Music and Clock widgets",
+      "url": "https://play.google.com/store/apps/details?id=com.widget.milus",
+      "preview": "https://lh3.googleusercontent.com/KXxgXxsUjoFGrC28KuIkXeZKmtHiHCh0MIoNTf_Io1VRggxGgKen0btRjTC5csSA-w=h480-rw",
+      "icon": "https://lh3.googleusercontent.com/Sg-7Fm0H7KdrOQOt1b_pstyT0JCX2O_WVI8T8M3Upo3dz0TTSnzo_0PcUv_PqWqoYA=w128-rw",
+      "compact": 0,
+      "pro": 1
+    },
+    {
+      "title": "KlocK",
+      "author": "Luciano Michilin",
+      "desc": "A simple clock widget that can change color by clicking on it",
+      "url": "https://play.google.com/store/apps/details?id=com.klock.skin",
+      "preview": "https://lh3.googleusercontent.com/OFMW6Zr6R_uCoxvsVR_jt4VsotDBfaKUrfA1Q2mYkIsjKRzm2tSJMMJYTNhXNfNj1Y7T=h480-rw",
+      "icon": "https://lh3.googleusercontent.com/I0FGJZbYCslyAgDT-bOqZsietBJ7GGH1I5ss56VycQieauNRUMxOvQ48D_rCMHxpOlGS=w128-rw",
+      "compact": 0,
+      "pro": 1
+    },
+    {
+      "title": "OneEight",
+      "author": "Will K.",
+      "desc": "Minimal clocks and dates with a flat style",
+      "url": "https://play.google.com/store/apps/details?id=com.oneeighty.myskin",
+      "preview": "https://lh3.googleusercontent.com/ErJHfxSxypEb5hbiITczYHpCZV5XJyFOKpYQx_Yc0tetaYf2SSMfp0BYDpj6_cLBPM8=h480-rw",
+      "icon": "https://lh3.googleusercontent.com/ExnH9GtDTkE44KSLIY25Dm28s3azYsDPn5h2D1-bwnzSMO-nW4wM1gTliWGdhdYfnYA=w128-rw",
+      "compact": 0,
+      "pro": 1
+    },
+    {
+      "title": "Simply Elegant",
+      "author": "Custom Image Solutions",
+      "desc": "Designs celebrating the beauty of minimal, yet elegant Android widgets. Each one will include features that you would expect from a fully functional and appealing home screen widget",
+      "url": "https://play.google.com/store/apps/details?id=org.kustom.simplyelegantwidgets",
+      "preview": "https://lh3.googleusercontent.com/7ENp2qnWJQFkS9zoVl4guResWzuuGit8prM9p-uUVzRs_VkNf89CIER_Qzhw6iYh8g=h480-rw",
+      "icon": "https://lh3.googleusercontent.com/9mc4KL2veTo4V5eLNGie_ckh-JNtbvXrLjTPP7dWOwbqLAerNvMXq9ad5f8oF42LEQ=w128-rw",
+      "compact": 0,
+      "pro": 1
+    },
+    {
+      "title": "Droid",
+      "author": "Suraj Hodi",
+      "desc": "More than 30 stylish, minimal widgets with date and time",
+      "url": "https://play.google.com/store/apps/details?id=droid.kwgt.surajhodi",
+      "preview": "https://lh3.googleusercontent.com/OljegI8DpkmxQDuLG4Od1pS4yzOJx91B6Y8QrvL9iRGH7-M-XxSbWXnRR1cK0AjEvZQ=h480-rw",
+      "icon": "https://lh3.googleusercontent.com/AaAx83I0jw0a3fB9Ow--utkvbe69K8vwGovoG3bdXPwZBOuw6tRCHlyvXistju9FEmY=w128-rw",
+      "compact": 0,
+      "pro": 1
+    },    
+    {
+      "title": "Apex",
+      "author": "Ed the dev",
+      "desc": "A beautiful pack of minimal widgets",
+      "url": "https://play.google.com/store/apps/details?id=com.edstjohn.apexforkwgtfree",
+      "preview": "https://lh3.googleusercontent.com/zxLSIiDd3OVFsYLCiRxHN5fw-HLD7emqQF7w0MGLk198pzDNxt3JQYEjkWsR99zsqMs=h480-rw",
+      "icon": "https://lh3.googleusercontent.com/y_9F75c6WV4ym1JK4RGiNARS6hFlLcIs-u94E_Dglk9tUI76IJih4KDzglMn_uDncg=w128-rw",
+      "compact": 0,
+      "pro": 0
+    },    
+    {
+      "title": "Picture This",
+      "author": "Carla Jacobs",
+      "desc": "A set of smart and fully configurable widgets based on continously changing images downloaded from various sources",
+      "url": "https://play.google.com/store/apps/details?id=inthe.picture.kwgt",
+      "preview": "https://lh3.googleusercontent.com/OWIIVSQGp9X9uAt84XB6BWy4jS4SuN4lH16IrgU6Tsako6ILeET8BbYR0XAbLX4uASG2=h480-rw",
+      "icon": "https://lh3.googleusercontent.com/Fk21P5HqieoD_yA_VsnFGqU4vUDf7xDrk7f3Of4Pa2UpEzYAGiJKsDqjuNrC7zEsww=w128-rw",
+      "compact": 0,
+      "pro": 1
+    },
+    {
+      "title": "Cinema #1",
+      "author": "Buzurioe",
+      "desc": "A pack of clocks filled with action and adventure inspired from some of my personal favorite movies!",
+      "url": "https://play.google.com/store/apps/details?id=buzurioe.kwidget.cinema1",
+      "preview": "https://lh3.googleusercontent.com/6Gw-6U3ltNYmek0A5EwXTv2vngmun_ldLozX4uamC5rLYja6gLYZW1-mNadwPU4kJTYG=h480-rw",
+      "icon": "https://lh3.googleusercontent.com/4b6UnefvGoVQssF8OYJiqyzdpczdbU9Y_xoLI_H-YchbqbzpajCU6Z_yuT05U5SphPL1=w128-rw",
+      "compact": 0,
+      "pro": 1
+    },    
+    {
+      "title": "Material Daze",
+      "author": "Custom Image Solutions",
+      "desc": "Collection of Material themed date widgets, featuring month art from Google's Calendar app! From banners to material cards design, more to come!",
+      "url": "https://play.google.com/store/apps/details?id=org.kustom.materialdaze",
+      "preview": "https://lh3.googleusercontent.com/F8CkPz1D5Ciz97rIK1DGIPBNKw8y1RLX2XaoKjWDI7RQ8YjAn8vnlQsuY4gTohZWDI0=h480-rw",
+      "icon": "https://lh3.googleusercontent.com/o62DqiZkA6-beOGCKjo_Yxlo_QauVeeyNB_NZRZZv3Z8fivCtHq7-gAOMWJ1Xj1SDtgp=w128-rw",
+      "compact": 0,
+      "pro": 1
+    },
+    {
+      "title": "VinTypo",
+      "author": "Suraj Hodi",
+      "desc": "Stilish pack with fancy clocks and date widgets",
+      "url": "https://play.google.com/store/apps/details?id=vintypo.kwgt.surajhodi",
+      "preview": "https://lh3.googleusercontent.com/te0K6T-ole_U6tx-k4OrAkRitLIrHbNkiu7DcyRYN66QRCJqnBmsCa12HjjdVZ3x5Lw=h480-rw",
+      "icon": "https://lh3.googleusercontent.com/9b0BwqnIKSUyrsTwwYp-ymc5e-xcc1DIXuzEYYvAAFvizXxVN3_JK9xiFbX8pJ2qcmaf=w128-rw",
+      "compact": 0,
+      "pro": 1
+    },
+    {
+      "title": "Gradient Weather",
+      "author": "Luciano Michilin",
+      "desc": "A nice weather widget with automatic gradient based on configurable color and a lot of globals to play with",
+      "url": "https://play.google.com/store/apps/details?id=com.gradientweat.skin",
+      "preview": "https://lh3.googleusercontent.com/KHWphu9BsHlXQMaaV4deAo-TAoRLMX2NymXjPI5B6skgMP5NAc-CFMxF2fkLoZAMsg=h480-rw",
+      "icon": "https://lh3.googleusercontent.com/DoBIL9aUa-8BlZqp5Y7j8EyYfGrcH3Hyy0dkIM_hvRoQV1zC-XZfG9ux3mTPIIKD4MU=w128-rw",
+      "compact": 0,
+      "pro": 1
+    },
+    {
+      "title": "G+ Gallery",
+      "author": "Kustom Users",
+      "desc": "Check out the official Kustom Gallery community for more free presets and awesomeness!",
+      "url": "https://plus.google.com/communities/105800766530390603634/stream/403ab4a7-1a59-4368-8683-4bccaa2b74f9",
+      "preview": "http://lh3.googleusercontent.com/-vMt8Ngp30TQ/AAAAAAAAAAI/AAAAAAAAAAY/UE0sVyAx5FM/s265-c-k-no/photo.jpg=h480-rw",
+      "icon": "https://lh3.googleusercontent.com/n9RvyNGeSkcdj3zGYIz0POXLE23hoKp8rBn9-vAB7jxAV5pfpxhos8PswNHfSp2cUA=w128-rw",
+      "compact": 0,
+      "pro": 1
+    },
+    {
+      "title": "KLWP (app)",
+      "author": "Kustom Industries",
+      "desc": "Need a full screen theming engine with animations and one second update? Check KLWP out!",
+      "url": "https://play.google.com/store/apps/details?id=org.kustom.wallpaper",
+      "preview": "https://lh4.ggpht.com/oB_-O75nf5pkJncEaAf6_B-4wP7merufnYfaYHFLNh0rIpmiMdZghBR2S476p7DvtA=h480-rw",
+      "icon": "https://lh4.ggpht.com/oB_-O75nf5pkJncEaAf6_B-4wP7merufnYfaYHFLNh0rIpmiMdZghBR2S476p7DvtA=w128-rw",
+      "compact": 0,
+      "pro": 0
+    }
+  ]
+}

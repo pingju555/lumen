@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "title": "Weather Graph",
+      "author": "Arun Kumar",
+      "desc": "Accurate plotting of graph based on maximum and minimum temperature for the next 6 days.",
+      "url": "https://play.google.com/store/apps/details?id=com.arun.wgraph.komponent",
+      "preview": "https://lh3.googleusercontent.com/70yZsMTSw0WL8dm62YOrxCRUvtTvZiyo5F9egb4G72zHCTyyWO-mPDuTcD2DutUJf7JR=w480-rw",
+      "icon": "https://lh3.ggpht.com/XZwLR6bcd-cGJY_kT4gupUaci5gAP8Cmmw1t5eDTaex0zFfRdByOccRUyIGJuKwo9kY=w128-rw",
+      "compact": 0,
+      "pro": 0
+    },
+    {
+      "title": "kCalendar",
+      "author": "I Am Topher",
+      "desc": "Kustom Calendar Komponent unlike any other... uses math to calculate each day's text.",
+      "url": "https://play.google.com/store/apps/details?id=org.kustom.iamtopher.kalendar",
+      "preview": "https://lh3.googleusercontent.com/Lrpu_gxvTvp-uwu0xXJKTUE-jI2cXC3afA2v1UJR1buTsu921IZZbvYjQ4omrUpIylA=w480-rw",
+      "icon": "https://lh3.googleusercontent.com/wrw96A45gqW-PLv8-WGLK7IP0msyHKDB1iRKxvMXNpnndclHSIG8pDZdwMXxKG7iVg=w128-rw",
+      "compact": 0,
+      "pro": 0
+    },
+    {
+      "title": "Map Maker",
+      "author": "Patrick Martens",
+      "desc": "Want to add a map to your setup? Check out this awesome, super flexible map komponent maker!",
+      "url": "https://play.google.com/store/apps/details?id=com.androidscreen.klwp.kustommapmaker",
+      "preview": "https://lh3.googleusercontent.com/Xojc46lBOx_-7acPMQ916miO4tKIufyUOWiaFVMLPiUBhFQZrhvQBvMRMwy9GvQud6g=w480-rw",
+      "icon": "https://lh3.googleusercontent.com/u9MQ7nuR9lWEKuYvrJhQPEfm_XuqL16ydaRf12we2qmtBKNlFq9svR-G7CoNUIFvPaw=w128-rw",
+      "compact": 0,
+      "pro": 1
+    },
+    {
+      "title": "Weather Komp",
+      "author": "MowMo",
+      "desc": "Set of high res weather icons.",
+      "url": "https://play.google.com/store/apps/details?id=com.mowmo.weatherkomp",
+      "preview": "https://lh3.googleusercontent.com/AkXKH8W1VOnynedB-1C8XO63CN02qNqFwmrCv4UblUPvYIbHX0y4QWRtGzQztOiVBA=w480-rw",
+      "icon": "https://lh3.googleusercontent.com/QM6db4ciMUWEenx2rjE0EmBG8ayCifNDrAB22TIzbxKTuBw0IpOsVwRDy7ihA4qmNA=w128-rw",
+      "compact": 0,
+      "pro": 0
+    },
+    {
+      "title": "Cassette Komponent",
+      "author": "Bacon Bits",
+      "desc": "Set of 5 Media Player Komponents of different styled and coloured cassette tapes.",
+      "url": "https://play.google.com/store/apps/details?id=com.baconbits.kwlp.cassettes",
+      "preview": "https://lh3.googleusercontent.com/K9sC4Fda0dHzPmx0GTM-2rUmO3PKvQEozcOx3FMvMLtorq4I7yXXKsWXhiC1mYWClzM=w480-rw",
+      "icon": "https://lh3.googleusercontent.com/OyljSzImXoWEJJOsG7EQx2At2Q06x_s4cu4fNk8WhmX8Z3TRhJnGnI2I3HkE_GsD_caN=w128-rw",
+      "compact": 0,
+      "pro": 0
+    },
+    {
+      "title": "Material Music",
+      "author": "I/O Sxedio",
+      "desc": "Set of 3 Material Music Player Komponents with customizable globals.",
+      "url": "https://play.google.com/store/apps/details?id=io.sxedio.musickomp",
+      "preview": "https://lh3.googleusercontent.com/vYODgcIQ5f4ebo0kZGM5ETOcXW1TC1LFldY836-LwAMlLJVzR3IrECY8gDjFQ0s1bBA=w480-rw",
+      "icon": "https://lh3.googleusercontent.com/vGMrnRo7qBL-2518v0hFcdOA4uigqjmZEM0A1-WPQr-zdm5OQ_PMpotKdjOgiQyMwg=w128-rw",
+      "compact": 0,
+      "pro": 1
+    },
+    {
+      "title": "Materialike",
+      "author": "Support+",
+      "desc": "Material style SVG (vector based) weather icon pack.",
+      "url": "https://play.google.com/store/apps/details?id=org.kustom.materialike",
+      "preview": "https://lh3.googleusercontent.com/1b9-2M7whRL1GeuuzCt60Z1gCKYR1SwdenfO_SR_Bo2xyzOC08MD11Dp0C48i8ynTUl-=h480-rw",
+      "icon": "https://lh3.googleusercontent.com/cWsGqd5oelnlEF3wOjFRjsmdWWHnvAVHeeCOj1wrkyRI9K-Zbn7tYFmEDTNahLqCIQ=w128-rw",
+      "compact": 0,
+      "pro": 1
+    },
+    {
+      "title": "BlackAndWhite",
+      "author": "Support+",
+      "desc": "Black and White style SVG (vector based) weather icon pack.",
+      "url": "https://play.google.com/store/apps/details?id=com.komponent.blackwhite",
+      "preview": "https://lh3.googleusercontent.com/dHiM3ufmpD7U26HPyXgpm9s-JCc3R8vQwMig6m6U4OoLLRVxulD-tLOdkeJpnWBMpc4=h480-rw",
+      "icon": "https://lh3.googleusercontent.com/M90neR4XVOTIXN2SpTwuygZi0tPr_WlpOB16VjdNNFREMMekmYxBr9-TvJhCA-ULqaA=w128-rw",
+      "compact": 0,
+      "pro": 1
+    },
+    {
+      "title": "DBK",
+      "author": "DBett4",
+      "desc": "Cool, reusable, minimal komponents for music, weather, date or search.",
+      "url": "https://play.google.com/store/apps/details?id=kustom.dbett4.dbk",
+      "preview": "https://lh3.googleusercontent.com/yd7vG4_QG4dZ_dozlMWq7taT_NKiCdaOQBLAODfpbaPhT9cXOe2KmNL6f85NRNda-w=h480-rw",
+      "icon": "https://lh3.googleusercontent.com/DCpjLjxAnlEa26oQ00__xe41y0KM2Qec7fpza9a3ytUIqx3PUu8esp5-pSAQ0DSF_78=w128-rw",
+      "compact": 0,
+      "pro": 1
+    },
+    {
+      "title": "Material Weather",
+      "author": "I/O Sxedio",
+      "desc": "Customizable weather komponents with nice flat stile and a LOT of options.",
+      "url": "https://play.google.com/store/apps/details?id=io.sxedio.weatherkomp",
+      "preview": "https://lh3.googleusercontent.com/2ON3BNe29XEMk-lCyYqGkfoQsAGmneV-gvP4vgk-W8DBGCGFCtwow4Q2bFPcH2hYtHA=w480-rw",
+      "icon": "https://lh3.googleusercontent.com/vPzspYbcUiTBZ_9PoAk6kl9PF7n4NhI3qliIwEcVjyJL1cC_arQIau1bFzMGKaA8O2o=w128-rw",
+      "compact": 0,
+      "pro": 1
+    }
+  ]
+}

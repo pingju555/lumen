@@ -1,0 +1,63 @@
+Lumen 提交说明
+==============
+
+仓库：https://github.com/pingju555/lumen
+（已建好，当前为空仓，仅有 GitHub 自动生成的默认 README.md / .gitignore）
+
+下面两种方式任选其一。
+
+
+────────────────────────
+方式 A：GitHub 网页上传（最省事，无需 git 凭据）
+────────────────────────
+1. 把本目录下的  lumen_submit.zip  解压到一个临时文件夹，
+   得到 src/lumen 下的全部源码（已含 .gitignore、README.md、
+   Resources/help_manual.json、lumen.ico 等，且不含 bin/obj/.git）。
+2. 打开 https://github.com/pingju555/lumen
+3. 点绿色「Add file」→「Upload files」。
+4. 把解压出来的【所有文件和文件夹】（App.xaml、Atoms/、Formula/、… 含子目录）
+   整体拖进上传区。
+   - 若提示 README.md / .gitignore 已存在，选择「覆盖 / 替换」即可（用我们的版本）。
+5. 在下方写提交信息，例如：
+       Initial commit: Lumen 桌面覆盖层 (WPF/.NET8)
+6. 点「Commit changes」完成。
+
+
+────────────────────────
+方式 B：git push（保留本地完整提交历史 4ea0333）
+────────────────────────
+本地仓库已就绪（src/lumen 下已 git init + 初始提交）。
+因为 GitHub 仓库是用 autoInit 建的（已有 1 个默认提交），
+直接 push 会被拒（non-fast-forward）。
+推荐强制推送覆盖默认内容（仓库全新、仅你一人，安全）：
+
+  cd "D:\Main\AI Quest&Project\桌面覆盖层\src\lumen"
+
+  # 邮箱/用户名已预设为你的 GitHub 账号，无需再改（已设：2336317586@qq.com / pingju555）
+  # git config user.email "2336317586@qq.com"
+
+  # 添加远端
+  git remote add origin https://github.com/pingju555/lumen.git
+  git branch -M main
+
+  # 方式 B-1 强制推送覆盖默认内容（推荐，仓库仅你一人）
+  git push -u origin main --force
+
+  # 方式 B-2 若你用 Personal Access Token（把 <token> 换成你的）
+  # git remote set-url origin https://<token>@github.com/pingju555/lumen.git
+  # git push -u origin main --force
+
+注意：
+- 强制推送前确认仓库确实只有你一人、且默认内容可丢弃。
+- 若不想 force，可在 GitHub 网页把仓库删了重建（不要勾
+  Initialize with README/.gitignore / License），然后普通 push。
+
+
+────────────────────────
+包内包含（共 77 个文件，已排除 bin/ obj/ .git）
+────────────────────────
+.gitignore / LICENSE / README.md / CONTRIBUTING.md / lumen.csproj / app.manifest / lumen.ico
+App.xaml(.cs) / LumenWindow.xaml(.cs) / AtomTree.cs
+Actions/  Atoms/  Core/  Engine/  Formula/  Globals/  Native/
+Pages/  Persistence/  Presets/  Render/  Resources/  Ui/  Icons/
+Resources/help_manual.json  （内置使用手册种子档，9 页 230 原子）

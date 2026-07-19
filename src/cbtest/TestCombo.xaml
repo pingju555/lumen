@@ -1,0 +1,17 @@
+<Window x:Class="TestCombo.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ComboBox Test" Height="300" Width="400"
+        Background="#1E1E1E" Foreground="#F0F0F0">
+    <StackPanel Margin="16">
+        <ComboBox x:Name="Cb1" Margin="0,0,0,16">
+            <ComboBoxItem>Rect</ComboBoxItem>
+            <ComboBoxItem>RoundRect</ComboBoxItem>
+            <ComboBoxItem>Ellipse</ComboBoxItem>
+            <ComboBoxItem>Line</ComboBoxItem>
+        </ComboBox>
+        <ComboBox x:Name="Cb2" ItemsSource="Rect;RoundRect;Ellipse;Line" Margin="0,0,0,16"/>
+        <Button x:Name="Btn" Content="Test: Show values" Click="Btn_Click"/>
+        <TextBlock x:Name="Tb" Margin="0,8,0,0"/>
+    </StackPanel>
+</Window>
