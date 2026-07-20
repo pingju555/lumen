@@ -410,11 +410,15 @@ namespace Lumen.Atoms
             };
             grid.Children.Add(move);
             _moveThumb = move;
+            if (OffsetXProp.Mode != PropMode.Static || OffsetYProp.Mode != PropMode.Static)
+                move.ToolTip = "偏移已绑定公式/变量，清除绑定后方可拖动";
             // 挂部件级右键菜单（工厂可能尚未注入，Render 时已注入）
             if (ContextMenuFactory != null) grid.ContextMenu = ContextMenuFactory.Invoke(this);
             move.DragDelta += (s, e) =>
             {
                 if (!EditMode) return;
+                // 偏移被公式/变量绑定时禁用拖拽：保留绑定，拖拽不改变位置（清除绑定后方可拖动）。
+                if (OffsetXProp.Mode != PropMode.Static || OffsetYProp.Mode != PropMode.Static) return;
                 var rawX = Bounds.X + e.HorizontalChange;
                 var rawY = Bounds.Y + e.VerticalChange;
                 var pt = Coord.Snap(new Point(rawX, rawY));
@@ -431,7 +435,7 @@ namespace Lumen.Atoms
                     if (HitTestVisibleContent(_rootGrid, Mouse.GetPosition(_rootGrid), this is ContainerAtom))
                         FireSelected();
                 }
-                else
+                else if (!(OffsetXProp.Mode != PropMode.Static || OffsetYProp.Mode != PropMode.Static))
                 {
                     WriteBackOffsetFromBounds();
                     OnChanged?.Invoke();
@@ -1082,15 +1086,6 @@ namespace Lumen.Atoms
             Enum.TryParse<NineAnchor>(anchorStr, out var anchor);
             double.TryParse(Txt(OffsetXProp, Ctx), out var ox);
             double.TryParse(Txt(OffsetYProp, Ctx), out var oy);
-
-            // 绝对定位模式：TopLeft 锚点 + 偏移均为 0 → 位置已存于 Bounds
-            // （拖拽/落点/落点直接写入），不应按锚点重算而清零。
-            // 仅当锚点非 TopLeft 或存在非零偏移时才按锚点重定位（窗口尺寸变化等）。
-            if (anchor == NineAnchor.TopLeft && ox == 0 && oy == 0)
-            {
-                SyncPosition();
-                return;
-            }
 
             // 画布基准点：锚点对应的区域角/边位置
             var basePt = Coord.ResolveAnchor(anchor, 0, 0, areaW, areaH);

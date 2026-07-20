@@ -73,6 +73,7 @@ namespace Lumen.Ui
             public UIElement FormulaHost;
             public UIElement GvHost;
             public FrameworkElement ModeDotHost;    // 右侧绑定状态指示器（f=公式 G=变量 空=静态）
+            public TextBox ValueTb;                // 静态数值输入控件（改锚点偏移归零等场景直接复位用）
 
             public string Reader()
             {
@@ -634,6 +635,7 @@ namespace Lumen.Ui
                 case EditKind.Number:
                     {
                         var tb = MakeNumberBox(raw, 120, _ => Preview(f));
+                        st.ValueTb = tb;
                         st.ReadValue = () => tb.Text;
                         return tb;
                     }
@@ -754,8 +756,13 @@ namespace Lumen.Ui
                 cell.MouseLeave += (s, e) => { cell.Background = anchors[idx] == selected ? Theme.BgActive : Theme.BgSurface; };
                 cell.MouseLeftButtonDown += (s, e) =>
                 {
+                    if (anchors[idx] == selected) return;   // 锚点未变则不重置偏移
                     selected = anchors[idx];
                     Paint();
+                    // 改锚点 → 静态偏移归零（偏移体系重新相对新锚点计算）。
+                    // 公式/变量绑定的偏移保留其绑定，不在此清零。
+                    ResetOffsetField("offsetX");
+                    ResetOffsetField("offsetY");
                     Preview(f);
                 };
                 Grid.SetRow(cell, i / 3);
@@ -772,6 +779,15 @@ namespace Lumen.Ui
             wrap.Children.Add(grid);
             wrap.Children.Add(caption);
             return wrap;
+        }
+
+        /// <summary>改锚点时把某偏移字段复位为 0：仅当该字段为静态模式才清零（公式/变量绑定保留）。
+        /// 直接写入对应数值 TextBox 触发其 Preview，使原子属性与 UI 同步归零。</summary>
+        private void ResetOffsetField(string key)
+        {
+            if (!_states.TryGetValue(key, out var st) || st.ValueTb == null) return;
+            if (st.Mode != PropMode.Static) return;   // 绑定的偏移保持绑定，不在此清零
+            if (st.ValueTb.Text != "0") st.ValueTb.Text = "0";
         }
 
         // ---------- 色卡编辑器（ARGB 内嵌展开） ----------
