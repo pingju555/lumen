@@ -306,19 +306,25 @@ namespace Lumen
             // 部件树同步当前页
             try { SyncPropWindow(); }
             catch (Exception ex) { Logger.Log("SyncPropWindow failed: " + ex); }
-            // 2) 装饰性淡入；任何异常都保证 PageHost 回到可见。
-            //    保留强引用 _fadeSb，防止局部 Storyboard 被 GC 导致淡入中断、页面卡在透明。
+            // 2) 装饰性淡入：仅对「原子画布层」淡入，背景/网格层始终不透明。
+            //    背景层挂在 PageHost 内，若整体淡入会把背景一起拉到透明——反复切页时
+            //    页面长期停在接近 0 的透明度，表现为「新切到的页面成透明」。故 PageHost
+            //    固定 Opacity=1，只对 _canvasLayer.Root（原子画布层）做 0→1 淡入。
+            PageHost.Opacity = 1;
             try
             {
-                PageHost.Opacity = 0;
-                _fadeSb = new Storyboard();
-                var fade = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(180));
-                Storyboard.SetTarget(fade, PageHost);
-                Storyboard.SetTargetProperty(fade, new PropertyPath(UIElement.OpacityProperty));
-                _fadeSb.Completed += (s, e) => PageHost.Opacity = 1;
-                _fadeSb.Begin();
+                if (_canvasLayer?.Root != null)
+                {
+                    _canvasLayer.Root.Opacity = 0;
+                    _fadeSb = new Storyboard();
+                    var fade = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(180));
+                    Storyboard.SetTarget(fade, _canvasLayer.Root);
+                    Storyboard.SetTargetProperty(fade, new PropertyPath(UIElement.OpacityProperty));
+                    _fadeSb.Completed += (s, e) => { if (_canvasLayer?.Root != null) _canvasLayer.Root.Opacity = 1; };
+                    _fadeSb.Begin();
+                }
             }
-            catch { PageHost.Opacity = 1; }
+            catch { if (_canvasLayer?.Root != null) _canvasLayer.Root.Opacity = 1; }
         }
 
         // ---------- 页面指示器 ----------
