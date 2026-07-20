@@ -18,6 +18,7 @@
 - **内置手册从嵌入资源兜底加载** — 即使 `profiles/使用手册.json` 文件刷新失败（旧版残留、被占用、权限等），只要当前激活档为内置手册，启动时直接从程序集嵌入资源解析最新手册（25 页/583 原子），避免显示旧版 2 页手册；`ConfigStore` 中所有 `Debug.WriteLine` 改为 `Logger.Log`，Release 构建下异常也能落入 `<数据根>/lumen.log` 便于排查
 - **窗框回退至 v1.3.0 状态** — 撤销此前临时引入的窗框统一（共享 `ChromeWindow` 轻量化 + PropWindow 接入），恢复至 v1.3.0 原状：设置/配置档/页面背景窗口继承 `ChromeWindow` 重风格（标题栏 36 / 14×14 蓝色方块 / 13px 标题 / 底部 `BgSunken` 圆角），属性窗口（PropWindow）回归独立自绘轻量风格（32 / 12×12 / 12）。便携配置默认位置与内置手册刷新均保持不变
 - **修复文本原子 align 属性失效** — `TextAtom` 在默认 `FixedHeight` 模式下把 `_bgBorder` 固定设为 `HorizontalAlignment=Left`，导致 `align=Center/Right/Justify` 的文本仍按左对齐渲染。现根据 `align` 值设置 Border 水平/垂直对齐：Center 为水平+垂直居中，Right 为靠右，Justify 为拉伸；Left 保持默认。所有设置过居中的文本（如手册标题、按钮标签）恢复预期位置
+- **修复 PropWindow 重建 Tab 后跳回「项目」Tab** — `RebuildTabs()` 末尾原固定 `MainTabs.SelectedIndex = 0`，每次重建（切页/新增页/改网格背景/选中原子等）都把用户踢回第一个「项目」Tab。现给每个 TabItem 打稳定 `Tag`（tree / prop:&lt;key&gt; / page / grid / bg / profile / settings），重建前记住当前选中 Tag、重建后按 Tag 恢复；仅首次加载或对应 Tab 不存在时才落到「项目」Tab。切页/改设置后停留原地
 - **移除文本原子背景属性** — 文本原子不需要背景色：旧版默认值 `#22000000` 曾为所有文本带上半透明黑底方块，与覆盖层背景产生色差。现从 `TextAtom` 中彻底移除 `BgProp` 及属性面板「style」页的 `bg` 颜色项；`ApplyDynamic` 不再设置 `_tb.Background`，保留旧数据中的 `bg` 字段但加载时忽略，确保文本始终透明无底色
 - **页面背景改为完全独立（去掉跨页借用）** — `ComposeCurrentPage` 原有一段「当前页透明 → 借用主页/第一个不透明页的背景」回退逻辑，导致切换/新增页面时某页显示的根本不是自己设置的背景（透明页要么显示别的页底色、要么在没有任何不透明页时直接穿透桌面），表现为「这页我没设透明却变透明了」。现删除该回退，每页只使用自身 `Background`：透明（A=0）即穿透桌面（覆盖层用法）、纯色/图片/公式按其自身设定、空/缺省由 `WallpaperLayer.ApplyBg` 兜底默认深色。切页与新增页不再出现借来的背景
 

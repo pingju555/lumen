@@ -133,13 +133,16 @@ namespace Lumen.Ui
 
         private void RebuildTabs()
         {
+            // 重建前记住当前选中 Tab 的稳定标识（Tag），重建后恢复，避免跳回「项目」Tab
+            string keepTag = (MainTabs.SelectedItem as TabItem)?.Tag as string;
+
             MainTabs.Items.Clear();
 
             // 1) 项目 Tab（部件树 + 数量统计）
             int total = CountItems();
             var treeHeader = total > 0 ? $"{Loc.T("propwin.tree")} ({total})" : Loc.T("propwin.tree");
             var treeTab = BuildTreeTab();
-            MainTabs.Items.Add(new TabItem { Header = treeHeader, Content = treeTab });
+            MainTabs.Items.Add(new TabItem { Tag = "tree", Header = treeHeader, Content = treeTab });
 
             // 2) 属性 Tab（PropertyEditorPanel 构建）
             if (_propPanel != null)
@@ -148,6 +151,7 @@ namespace Lumen.Ui
                 {
                     MainTabs.Items.Add(new TabItem
                     {
+                        Tag = "prop:" + kv.Key,
                         Header = Loc.T(kv.Value.LocKey),
                         Content = kv.Value.Content
                     });
@@ -155,21 +159,26 @@ namespace Lumen.Ui
             }
 
             // 3) 页面管理 Tab
-            MainTabs.Items.Add(new TabItem { Header = Loc.T("pagebg.tab.page"), Content = BuildPageTab() });
+            MainTabs.Items.Add(new TabItem { Tag = "page", Header = Loc.T("pagebg.tab.page"), Content = BuildPageTab() });
 
             // 4) 网格 Tab
-            MainTabs.Items.Add(new TabItem { Header = Loc.T("pagebg.tab.grid"), Content = BuildGridTab() });
+            MainTabs.Items.Add(new TabItem { Tag = "grid", Header = Loc.T("pagebg.tab.grid"), Content = BuildGridTab() });
 
             // 5) 背景 Tab
-            MainTabs.Items.Add(new TabItem { Header = Loc.T("pagebg.tab.bg"), Content = BuildBgTab() });
+            MainTabs.Items.Add(new TabItem { Tag = "bg", Header = Loc.T("pagebg.tab.bg"), Content = BuildBgTab() });
 
             // 6) 配置档 Tab
-            MainTabs.Items.Add(new TabItem { Header = Loc.T("profile.title"), Content = BuildProfileTab() });
+            MainTabs.Items.Add(new TabItem { Tag = "profile", Header = Loc.T("profile.title"), Content = BuildProfileTab() });
 
             // 7) 设置 Tab
-            MainTabs.Items.Add(new TabItem { Header = Loc.T("settings.title"), Content = BuildSettingsTab() });
+            MainTabs.Items.Add(new TabItem { Tag = "settings", Header = Loc.T("settings.title"), Content = BuildSettingsTab() });
 
-            if (MainTabs.Items.Count > 0) MainTabs.SelectedIndex = 0;
+            // 恢复选中：优先匹配重建前的 Tag；无匹配（首次加载/属性面板不存在）才落到项目 Tab
+            TabItem restore = null;
+            if (keepTag != null)
+                restore = MainTabs.Items.OfType<TabItem>().FirstOrDefault(t => (t.Tag as string) == keepTag);
+            if (restore != null) MainTabs.SelectedItem = restore;
+            else if (MainTabs.Items.Count > 0) MainTabs.SelectedIndex = 0;
             RebuildTree();
         }
 
