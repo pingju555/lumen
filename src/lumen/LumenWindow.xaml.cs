@@ -223,13 +223,12 @@ namespace Lumen
             Coord.AreaW = Width; Coord.AreaH = Height; // 注入工作区尺寸：拖拽松手反解偏移用
             _gridLayer.Enabled = _editMode && page.ShowGrid; // 网格仅编辑模式显示（对齐辅助），桌面模式保持干净
             _stack.Recompose();
-            // 当前页背景全透明 → 找第一页（主页）背景作底，避免 画布 页全空
-            var bg = page.Background;
-            if (IsTransparentBg(bg))
-            {
-                var home = _pages.Pages.FirstOrDefault(p => p != page && !IsTransparentBg(p.Background));
-                if (home != null) bg = home.Background;
-            }
+            // 每页背景完全独立：直接使用当前页自身背景，不做跨页借用。
+            // - 透明（A=0）→ 穿透桌面（覆盖层用法）；
+            // - 空/缺省 → WallpaperLayer.ApplyBg 兜底默认深色，绝不借用其它页；
+            // - 纯色/图片/公式 → 其自身设定。
+            // 切换/新增页不会再出现「借来的」背景，行为与各自设置一致。
+            var bg = page.Background ?? new BackgroundRef();
             _wallpaperLayer.SetBackground(bg, _ctx);
             _gridLayer.Draw(page.GridSize, Width, Height);
 
