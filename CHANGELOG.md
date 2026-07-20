@@ -7,7 +7,34 @@
 
 ---
 
-## [v1.3.3] — 2026-07-20
+## [v1.4.0] — 2026-07-20
+
+> 刷新率升级：双轨调度器（~60 FPS 快轨） + SMTC 事件驱动。
+
+### 改进
+- **双轨调度器：快轨 ~60 FPS（16ms）+ 慢轨 1s** — `DirtyScheduler` 重构为双 `DispatcherTimer` 架构：
+  - **快轨（16ms）**：数据源依赖检测（时钟/媒体/性能）→ 标脏 → `Flush()` 批量刷新原子 → `TickAnimation()` / `TickProgressAnimation()` 流畅动画插值
+  - **慢轨（1s）**：仅 `EvaluateFlows()` 流程条件评估（保持低频）
+  - **GV 变更即时 Flush**：`GvStore.Changed` 回调由 `MarkAllDirty()` 改为 `MarkAllDirty(); Flush();`，变量修改后原子即时重算，无需等 Tick
+  - **失焦降频**：快轨 16ms → 200ms（5 FPS），慢轨保持 1s
+- **SMTC 事件驱动取代 2s 硬轮询** — `MediaProvider`：
+  - 订阅 `GlobalSystemMediaTransportControlsSessionManager.CurrentSessionChanged`（切换播放器）、`Session.MediaPropertiesChanged`（切歌/封面）、`Session.PlaybackInfoChanged`（播放/暂停）→ 事件触发即时读取数据并通过 `DataChanged` 事件通知 `DirtyScheduler.RequestFlush()` 即时刷新 UI
+  - 位置进度由独立 250ms `Timer` 轮询（仅播放中有效，暂停自动静默）
+  - 移除原有 `Timer(2000)` 固定轮询，功耗更低、响应更快
+- **SystemDataProvider 暴露 `MediaDataChanged` 事件** — 桥接 `MediaProvider.DataChanged`，供 `LumenWindow` 在 UI 线程调度 `RequestFlush()`
+
+### 变更影响
+| 场景 | 改前延迟 | 改后延迟 |
+|------|---------|---------|
+| 切歌→标题/封面变 | ~3 秒 | **事件驱动（<50ms）** |
+| 播放→暂停 | ~2 秒 | **事件驱动（<50ms）** |
+| 进度条更新 | ~3 秒 | **~250ms（位置轮询）** |
+| `gv(x)` 改值→UI 变 | ≤ 1 秒 | **即时（同步 Flush）** |
+| 时钟秒切 | ≤ 1 秒 | **~60 FPS（16ms）** |
+| 动画插值 | 1 FPS | **~60 FPS（16ms 流畅）** |
+| `si(cpu)` 刷新 | ~2 秒 | **~1s（PDH 后台 1s 采样不变）** |
+
+---
 
 > 锚点偏移拖拽体系理顺（修复 v1.3.2 引入的定位回归）。
 

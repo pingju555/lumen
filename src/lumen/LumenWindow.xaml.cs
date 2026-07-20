@@ -181,6 +181,7 @@ namespace Lumen
             _atomHost.OnChanged += SaveAll;
 
             _scheduler = new DirtyScheduler(_atomHost.Flatten(), _gv);
+            WireSchedulerEvents();
 
             ComposeCurrentPage();
             DrawRuler();
@@ -194,6 +195,13 @@ namespace Lumen
                 if (_pages.CurrentPage != null)
                     ForEachAtomDeep(_pages.CurrentPage.AllAtoms(), a => a.RecalcPosition(Width, Height));
             };
+        }
+
+        /// <summary>连接 SMTC 事件 → DirtyScheduler 即时刷新。每次重建 _scheduler 后须调用。</summary>
+        private void WireSchedulerEvents()
+        {
+            if (_ctx?.Provider is SystemDataProvider sdp)
+                sdp.MediaDataChanged += () => Dispatcher.InvokeAsync(() => _scheduler?.RequestFlush());
         }
 
         /// <summary>首次运行：播种默认工程——「主页」(GridWorkspace+时钟小组件+散落原子) 与「画布」(CanvasFree)。</summary>
@@ -1081,6 +1089,7 @@ namespace Lumen
             _activeProfile = newName;
             _lastOverallPreset = null;
             _scheduler = new DirtyScheduler(new List<Atom>(), _gv);
+            WireSchedulerEvents();
             ComposeCurrentPage();
             DrawRuler();
             SaveAll();
@@ -1279,6 +1288,7 @@ namespace Lumen
             _lastOverallPreset = null;
 
             _scheduler = new DirtyScheduler(new List<Atom>(), _gv);
+            WireSchedulerEvents();
             ComposeCurrentPage();
             DrawRuler();
             SaveAll();

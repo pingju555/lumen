@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Windows;
 using System.Windows.Threading;
 using Lumen.Atoms;
 using Lumen.Globals;
@@ -8,27 +7,44 @@ using Lumen.Globals;
 namespace Lumen.Engine
 {
     /// <summary>
-    /// 增量重算调度器：脏标记 + 批量 Flush + 容错 + 降频。
-    /// - df/tf/ts 等时间类：每秒 tick 标记重算（1s 精度）。
-    /// - gv.Changed：标记依赖原子重算。
-    /// - 失焦：拉长 Interval 至 10s（NFR-07 降频）。
-    /// 详见 docs/project/phases/P2_原子全集与公式引擎/P2-05_增量重算与容错.md
+    /// 双轨增量重算调度器（v2）：快轨 ~60 FPS（数据→UI + 动画插值），慢轨 1s（流程条件评估）。
+    /// - 数据源（时钟/媒体/性能）：每帧检测标脏 → Flush 批量刷新。
+    /// - GV 变更：即时 MarkAllDirty + Flush（跳过 Tick 等待）。
+    /// - SMTC 事件：通过 RequestFlush() 触发即时刷新。
+    /// - 动画 TickAnimation/TickProgressAnimation：移至快轨（60 FPS 流畅动画）。
+    /// - 失焦：快轨降为 200ms（5 FPS），慢轨不变（1s）。
     /// </summary>
     public class DirtyScheduler
     {
         private readonly HashSet<Atom> _dirty = new();
         private readonly List<Atom> _atoms;
         private readonly GvStore _gv;
-        private readonly DispatcherTimer _timer;
+        private readonly DispatcherTimer _fastTimer;
+        private readonly DispatcherTimer _slowTimer;
+
+        /// <summary>~60 FPS 快轨间隔（毫秒）。</summary>
+        private const int FAST_MS = 16;
+        /// <summary>失焦时快轨间隔（毫秒）。</summary>
+        private const int FAST_BG_MS = 200;
+        /// <summary>慢轨间隔（秒）。</summary>
+        private const int SLOW_S = 1;
 
         public DirtyScheduler(IEnumerable<Atom> atoms, GvStore gv)
         {
             _atoms = new List<Atom>(atoms);
             _gv = gv;
-            _gv.Changed += _ => MarkAllDirty();
-            _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-            _timer.Tick += (s, e) => Tick();
-            _timer.Start();
+            // GV 变更 → 即时全量标脏 + 立即 Flush（不等 Tick）
+            _gv.Changed += _ => { MarkAllDirty(); Flush(); };
+
+            // 快轨：数据→UI + 动画插值
+            _fastTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(FAST_MS) };
+            _fastTimer.Tick += (s, e) => FastTick();
+            _fastTimer.Start();
+
+            // 慢轨：流程条件评估（不需要高频）
+            _slowTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(SLOW_S) };
+            _slowTimer.Tick += (s, e) => SlowTick();
+            _slowTimer.Start();
         }
 
         public void SetAtoms(IEnumerable<Atom> atoms)
@@ -41,21 +57,42 @@ namespace Lumen.Engine
         public void MarkDirty(Atom a) { lock (_dirty) _dirty.Add(a); }
         public void MarkAllDirty() { lock (_dirty) foreach (var a in _atoms) _dirty.Add(a); }
 
-        private void Tick()
+        /// <summary>SMTC 事件驱动即时刷新：全量标脏后立即 Flush（跳过 Tick 等待）。</summary>
+        public void RequestFlush() { MarkAllDirty(); Flush(); }
+
+        private void FastTick()
         {
+            // 1) 数据源依赖检测 → 标脏
             foreach (var a in _atoms)
-                if (UsesClock(a) || UsesMedia(a) || UsesPerf(a)) MarkDirty(a);
+                if (UsesClock(a) || UsesMedia(a) || UsesPerf(a))
+                    MarkDirty(a);
+
+            // 2) 批量刷新所有脏原子
             Flush();
-            // 触发器评估（P5）：每个 tick 对全部原子（含容器子原子）检查条件，成立自动触发动作。
-            // 独立于脏标记，确保即使原子自身属性未变、仅条件数据变化（如电量/媒体状态）也能响应。
-            // 动画条件重估 + 进度动画 tick
+
+            // 3) 动画插值（60 FPS 流畅）
             foreach (var a in _atoms)
             {
-                a.EvaluateFlows();
                 a.TickAnimation();
                 a.TickProgressAnimation();
                 if (a is ContainerAtom c)
-                    foreach (var ch in c.Children) { ch.EvaluateFlows(); ch.TickAnimation(); ch.TickProgressAnimation(); }
+                    foreach (var ch in c.Children)
+                    {
+                        ch.TickAnimation();
+                        ch.TickProgressAnimation();
+                    }
+            }
+        }
+
+        private void SlowTick()
+        {
+            // 流程条件评估（低频，不需高帧率）
+            foreach (var a in _atoms)
+            {
+                a.EvaluateFlows();
+                if (a is ContainerAtom c)
+                    foreach (var ch in c.Children)
+                        ch.EvaluateFlows();
             }
         }
 
@@ -70,7 +107,6 @@ namespace Lumen.Engine
             return false;
         }
 
-        // 媒体依赖：公式含 mi( 的原子需每拍重算，媒体状态变化（换歌/封面）才能即时反映
         private static bool UsesMedia(Atom a)
         {
             foreach (var kv in a.GetProps())
@@ -81,8 +117,6 @@ namespace Lumen.Engine
             return false;
         }
 
-        // 性能依赖：公式含 si( 的原子需每拍重算，PDH 采样值（CPU/内存/磁盘/网络）才能即时反映。
-        // 修复项：v1.3.1 前 DirtyScheduler 仅标脏时钟/媒体类，导致所有 PDH 仪表盘首帧后静止。
         private static bool UsesPerf(Atom a)
         {
             foreach (var kv in a.GetProps())
@@ -110,7 +144,10 @@ namespace Lumen.Engine
 
         public void SetFocused(bool focused)
         {
-            _timer.Interval = focused ? TimeSpan.FromSeconds(1) : TimeSpan.FromSeconds(10);
+            _fastTimer.Interval = focused
+                ? TimeSpan.FromMilliseconds(FAST_MS)    // 60 FPS
+                : TimeSpan.FromMilliseconds(FAST_BG_MS); // 5 FPS
+            // 慢轨保持 1s 不变
         }
     }
 }

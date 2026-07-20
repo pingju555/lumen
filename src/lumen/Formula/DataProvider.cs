@@ -94,6 +94,13 @@ namespace Lumen.Formula
         private static readonly HttpClient _http = new();
         private readonly Dictionary<string, (DateTime, List<RssItem>)> _rssCache = new();
 
+        /// <summary>SMTC 数据更新事件（MediaProvider.DataChanged 桥接），供 DirtyScheduler 订阅。</summary>
+        public event Action MediaDataChanged
+        {
+            add => _media.DataChanged += value;
+            remove => _media.DataChanged -= value;
+        }
+
         public SystemDataProvider()
         {
             InitCpu();

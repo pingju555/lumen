@@ -10,10 +10,11 @@ using Windows.Media.Control;
 namespace Lumen.Formula
 {
     /// <summary>
-    /// P4-2 媒体信息提供器：基于 WinRT SMTC（GlobalSystemMediaTransportControlsSessionManager）
-    /// 后台轮询当前播放会话，缓存标题/艺术家/专辑/播放器/播放状态/进度，供 mi() 同步读取；
-    /// mu() 控制（play/pause/next/prev/stop）走 fire-and-forget，不阻塞公式求值。
-    /// 需要 Microsoft.Windows.SDK.NET 提供的 Windows.Media.Control 投影。
+    /// v2 媒体信息提供器：事件驱动（SMTC 会话事件）+ 位置轻量轮询（250ms，仅播放中）。
+    /// - SMTC 事件（MediaPropertiesChanged / PlaybackInfoChanged / CurrentSessionChanged）触发即时
+    ///   读取后通过 DataChanged 事件通知 DirtyScheduler 即时刷新。
+    /// - 移除原有 2s 固定轮询后台 Timer。
+    /// - 位置进度用独立 250ms Timer（播放中活跃，暂停/停止时自静默）。
     /// </summary>
     public sealed class MediaProvider
     {
@@ -26,53 +27,145 @@ namespace Lumen.Formula
         public double PositionSec { get; private set; }
         public double DurationSec { get; private set; }
 
-        /// <summary>当前媒体封面主色（dominant，AARRGGBB；无封面为 0）。</summary>
         public uint CoverColor { get; private set; }
-        /// <summary>当前媒体封面调色板（dominant/vibrant/muted/light/dark）；无封面为 null。</summary>
         public Dictionary<string, uint> CoverPalette { get; private set; }
-        /// <summary>当前媒体封面图片文件路径（PNG/JPG，源自 SMTC 缩略图或本地缓存图）；无封面为空串。供 Image 原子作源。</summary>
         public string CoverImagePath { get; private set; } = "";
-        /// <summary>我们自建的封面临时文件路径（负责清理）；本地缓存回退时直接引用播放器文件，不经此字段。</summary>
         private string _ownCoverPath;
 
-        // 封面回退缓存（SMTC 无缩略图时读本地专辑缓存；仅文件变化时重解码）
+        // 封面回退缓存
         private string _fbPath;
         private DateTime _fbWrite;
         private Dictionary<string, uint> _fbPalette;
         private uint _fbColor;
         private string _fbMissingAppId;
 
-        // 诊断日志去重：仅在会话身份/封面色变化时记一行
+        // 诊断日志去重
         private string _lastLogApp, _lastLogTitle, _lastLogArtist;
         private uint _lastLogColor;
 
         private GlobalSystemMediaTransportControlsSessionManager _mgr;
-        private readonly Timer _timer = new Timer(2000) { AutoReset = true };
+        private GlobalSystemMediaTransportControlsSession _currentSession;
 
-        public MediaProvider() => _timer.Elapsed += (s, e) => _ = PollAsync();
+        /// <summary>数据更新事件：SMTC 元数据/播放状态/封面变化时触发，
+        /// 供 DirtyScheduler 订阅以即时通知刷新原子。
+        /// 注意：该事件可能从非 UI 线程触发，订阅方需自行调度。</summary>
+        public event Action DataChanged;
+
+        // 位置轮询：250ms，仅播放中有效
+        private readonly Timer _posTimer = new Timer(250) { AutoReset = true };
+
+        public MediaProvider() => _posTimer.Elapsed += OnPositionTick;
 
         public void Start()
         {
-            _timer.Start();
-            _ = PollAsync();
+            _posTimer.Start();
+            _ = InitSession();
         }
 
-        private async Task PollAsync()
+        /// <summary>首次初始化：获取 SMTC 会话管理器并读取当前状态 + 挂事件。</summary>
+        private async Task InitSession()
         {
             try
             {
-                if (_mgr == null)
-                    _mgr = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync().AsTask();
-                var sess = _mgr?.GetCurrentSession();
-                if (sess == null) { Available = false; Clear(); return; }
+                _mgr = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync().AsTask();
+                if (_mgr == null) { Available = false; return; }
+
+                // 监听会话切换（用户换播放器）
+                _mgr.CurrentSessionChanged += OnSessionChanged;
+
+                // 读取初始会话
+                var sess = _mgr.GetCurrentSession();
+                if (sess != null)
+                    AttachSession(sess);
+
+                await ReadSessionData();
+            }
+            catch (Exception ex)
+            {
+                Available = false;
+                Logger.Log($"[Media] InitSession error: {ex.Message}");
+            }
+        }
+
+        /// <summary>会话切换事件：解绑旧会话，绑定新会话，读取数据并通知。</summary>
+        private void OnSessionChanged(GlobalSystemMediaTransportControlsSessionManager sender, CurrentSessionChangedEventArgs args)
+        {
+            try
+            {
+                DetachSession();
+                var sess = sender?.GetCurrentSession();
+                if (sess != null)
+                {
+                    AttachSession(sess);
+                    _ = ReadAndNotify();
+                }
+                else
+                {
+                    Clear();
+                    Available = false;
+                    DataChanged?.Invoke();
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"[Media] OnSessionChanged error: {ex.Message}");
+            }
+        }
+
+        private void AttachSession(GlobalSystemMediaTransportControlsSession sess)
+        {
+            if (_currentSession != null) DetachSession();
+            _currentSession = sess;
+            sess.MediaPropertiesChanged += OnPropsChanged;
+            sess.PlaybackInfoChanged += OnPlaybackChanged;
+        }
+
+        private void DetachSession()
+        {
+            if (_currentSession != null)
+            {
+                _currentSession.MediaPropertiesChanged -= OnPropsChanged;
+                _currentSession.PlaybackInfoChanged -= OnPlaybackChanged;
+                _currentSession = null;
+            }
+        }
+
+        private async void OnPropsChanged(GlobalSystemMediaTransportControlsSession sender, MediaPropertiesChangedEventArgs args)
+        {
+            try { await ReadAndNotify(); }
+            catch { }
+        }
+
+        private async void OnPlaybackChanged(GlobalSystemMediaTransportControlsSession sender, PlaybackInfoChangedEventArgs args)
+        {
+            try { await ReadAndNotify(); }
+            catch { }
+        }
+
+        /// <summary>读取会话数据（不含封面解码）并通知 DataChanged。</summary>
+        private async Task ReadAndNotify()
+        {
+            await ReadSessionData();
+            DataChanged?.Invoke();
+        }
+
+        /// <summary>完整读取当前会话数据（元数据 + 播放状态 + 位置 + 封面）。</summary>
+        private async Task ReadSessionData()
+        {
+            try
+            {
+                var sess = _currentSession;
+                if (sess == null) { Available = false; return; }
 
                 var props = await sess.TryGetMediaPropertiesAsync().AsTask();
                 var info = sess.GetPlaybackInfo();
+
                 Title = props?.Title ?? "";
                 Artist = props?.Artist ?? "";
-                // 系统媒体控件中专辑名通常放在 Subtitle 字段（无独立 Album 属性）
                 Album = props?.Subtitle ?? "";
                 AppName = sess.SourceAppUserModelId ?? "";
+
+                bool wasPlaying = Playing;
                 Playing = info?.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
 
                 try
@@ -83,7 +176,6 @@ namespace Lumen.Formula
                 }
                 catch { PositionSec = 0; DurationSec = 0; }
 
-                // 仅在会话身份变化时记一行诊断（避免每 2s 刷屏）
                 if (AppName != _lastLogApp || Title != _lastLogTitle || Artist != _lastLogArtist)
                 {
                     var thumbState = props?.Thumbnail != null ? "YES" : "NULL";
@@ -91,14 +183,35 @@ namespace Lumen.Formula
                     _lastLogApp = AppName; _lastLogTitle = Title; _lastLogArtist = Artist;
                 }
 
-                // 封面主色：优先 SMTC 缩略图；拿不到时回退到已知播放器的本地专辑封面缓存
-                // （原生网易云只把文字写进 SMTC；但 BetterNCM 等插件可把封面桥接进 SMTC Thumbnail，此时直接走 SMTC）
+                // 封面解码（后台任务较耗时可在此做）
                 bool gotCover = await TryCoverFromSmtc(props) || TryCoverFromCache(sess);
                 if (!gotCover) { CoverColor = 0; CoverPalette = null; }
 
                 Available = true;
+
+                // 位置 Timer 仅在播放中活跃
+                _posTimer.Enabled = Playing;
             }
-            catch (Exception ex) { Available = false; Clear(); Logger.Log($"[Media] PollAsync error: {ex.Message}"); }
+            catch (Exception ex)
+            {
+                Available = false;
+                Clear();
+                Logger.Log($"[Media] ReadSessionData error: {ex.Message}");
+            }
+        }
+
+        /// <summary>250ms 位置轮询 tick：仅在 Playing 时更新 PositionSec。</summary>
+        private void OnPositionTick(object sender, ElapsedEventArgs e)
+        {
+            if (!Playing) return;
+            try
+            {
+                var sess = _currentSession;
+                if (sess == null) return;
+                var tl = sess.GetTimelineProperties();
+                PositionSec = tl.Position.TotalSeconds;
+            }
+            catch { }
         }
 
         private void Clear()
@@ -118,7 +231,6 @@ namespace Lumen.Formula
 
         // ---- 封面主色提取（SMTC 优先，本地缓存回退）----
 
-        /// <summary>标准路径：从 SMTC 缩略流取封面。</summary>
         private async Task<bool> TryCoverFromSmtc(GlobalSystemMediaTransportControlsSessionMediaProperties props)
         {
             try
@@ -145,12 +257,10 @@ namespace Lumen.Formula
             catch (Exception ex) { Logger.Log($"[Media] SMTC thumbnail error: {ex.Message}"); return false; }
         }
 
-        /// <summary>把封面字节存为临时图片文件，文件名按内容 FNV-1a 哈希（同曲同路径、换曲换路径），
-        /// 返回路径。路径随歌曲变化可触发 Image 原子重载；旧的自建临时文件会被清理。</summary>
         private string SaveCoverBytes(byte[] bytes)
         {
             uint h = 0x811c9dc5u;
-            foreach (var b in bytes) h = (h ^ b) * 0x01000193u;   // FNV-1a 32-bit
+            foreach (var b in bytes) h = (h ^ b) * 0x01000193u;
             var ext = CoverExt(bytes);
             var name = $"lumen_cover_{h:X8}.{ext}";
             var path = Path.Combine(Path.GetTempPath(), name);
@@ -172,11 +282,6 @@ namespace Lumen.Formula
             return "png";
         }
 
-        /// <summary>
-        /// SMTC 无缩略图时的回退：对已知播放器（网易云/QQ音乐等）读取其本地专辑封面缓存目录里
-        /// 最新写入的图片。网易云音乐等只把文字写进 SMTC，封面图在原生缓存里。
-        /// 仅在文件变化时才重新解码，避免每个轮询周期都重算。
-        /// </summary>
         private bool TryCoverFromCache(GlobalSystemMediaTransportControlsSession sess)
         {
             try
@@ -212,18 +317,16 @@ namespace Lumen.Formula
                 _fbColor = pal.TryGetValue("dominant", out uint d) ? d : 0;
                 CoverPalette = pal;
                 CoverColor = _fbColor;
-                CoverImagePath = fb;   // 直接引用播放器缓存图（只读，不复制、不清理）
+                CoverImagePath = fb;
                 Logger.Log($"[Media] cover picked from local cache: {fb}");
                 return true;
             }
             catch { return false; }
         }
 
-        /// <summary>已知播放器 + 用户自定义 → 专辑封面缓存候选目录（去重）。</summary>
         private static List<string> AlbumCacheDirs(string appId)
         {
             var list = new List<string>();
-            // 用户手动配置的目录：始终附加扫描，不依赖播放器识别
             var custom = AppSettings.Instance.CoverCacheDirs;
             if (custom != null)
                 foreach (var d in custom)
@@ -254,10 +357,6 @@ namespace Lumen.Formula
             if (!list.Contains(dir)) list.Add(dir);
         }
 
-        /// <summary>
-        /// 在多个目录里取「最新写入且能被解码成图片」的文件（网易云缓存图多为无扩展名哈希，按内容嗅探而非扩展名）。
-        /// 仅看最近 30 分钟内写入的文件，控制枚举开销；每个目录取修改时间最新的若干候选逐个验证可解码性。
-        /// </summary>
         private static string FindLatestCover(List<string> dirs)
         {
             string best = null;
@@ -303,7 +402,7 @@ namespace Lumen.Formula
                     case "stop": await sess.TryStopAsync().AsTask(); break;
                 }
             }
-            catch { /* 控制失败忽略 */ }
+            catch { }
         }
     }
 }
